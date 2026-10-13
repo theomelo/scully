@@ -1,0 +1,42 @@
+warnings (5)
+
+warning[no_assertion]: test makes no assertion
+ --> test/no_assertion_test.rb:4:3
+  |
+4 |   def test_total
+  |   ^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+ --> test/no_assertion_test.rb:8:3
+  |
+8 |   def test_stubs_but_checks_nothing
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+  --> test/no_assertion_test.rb:16:3
+   |
+16 |   test "totals the order" do
+   |   ^^^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+  --> test/no_assertion_test.rb:22:3
+   |
+22 |   it "ships" do
+   |   ^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+  --> test/teardown_only_test.rb:12:3
+   |
+12 |   def test_only_checks_in_teardown
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+summary: 4 files (0 incomplete, 0 skipped), 18 tests, 0 errors, 5 warnings
+evidence: static analysis only; coverage and mutation testing not run
+
+Use `scully why <location>` for more info about each finding:
+
+scully why test/no_assertion_test.rb:4     # no_assertion
+scully why test/no_assertion_test.rb:8     # no_assertion
+scully why test/no_assertion_test.rb:16    # no_assertion
+scully why test/no_assertion_test.rb:22    # no_assertion
+scully why test/teardown_only_test.rb:12   # no_assertion

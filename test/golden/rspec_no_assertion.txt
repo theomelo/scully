@@ -1,0 +1,42 @@
+warnings (5)
+
+warning[no_assertion]: test makes no assertion
+ --> spec/no_assertion_spec.rb:6:3
+  |
+6 |   it "sums line items" do
+  |   ^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+  --> spec/no_assertion_spec.rb:16:7
+   |
+16 |       it "ships the order" do
+   |       ^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+  --> spec/no_assertion_spec.rb:23:3
+   |
+23 |   specify do
+   |   ^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+ --> spec/shared_examples_spec.rb:8:3
+  |
+8 |   it "rounds the price" do
+  |   ^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+ --> spec/teardown_only_spec.rb:8:3
+  |
+8 |   it "only checks in teardown" do
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+summary: 5 files (0 incomplete, 0 skipped), 20 tests, 0 errors, 5 warnings
+evidence: static analysis only; coverage and mutation testing not run
+
+Use `scully why <location>` for more info about each finding:
+
+scully why spec/no_assertion_spec.rb:6      # no_assertion
+scully why spec/no_assertion_spec.rb:16     # no_assertion
+scully why spec/no_assertion_spec.rb:23     # no_assertion
+scully why spec/shared_examples_spec.rb:8   # no_assertion
+scully why spec/teardown_only_spec.rb:8     # no_assertion
