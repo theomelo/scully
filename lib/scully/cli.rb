@@ -10,7 +10,7 @@ module Scully
     USAGE_HINT = "Run 'scully --help' for usage."
 
     # Rules run by default.
-    RULES = [].freeze
+    RULES = [Rules::NoAssertion].freeze
 
     # Runs the command and returns the process exit status.
     def self.start(argv, out: $stdout, err: $stderr, cwd: Dir.pwd, rules: RULES.map(&:new))
