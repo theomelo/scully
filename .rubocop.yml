@@ -1,5 +1,11 @@
+inherit_mode:
+  merge:
+    - Exclude
+
 AllCops:
   TargetRubyVersion: 4.0.6
+  Exclude:
+    - 'test/fixtures/**/*'
 
 Style/StringLiterals:
   EnforcedStyle: single_quotes

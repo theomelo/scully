@@ -28,5 +28,6 @@ Gem::Specification.new do |s|
   end
   s.bindir = 'exe'
   s.executables = s.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
+  s.add_dependency 'prism', '>= 1.8'
   s.require_paths = ['lib']
 end
