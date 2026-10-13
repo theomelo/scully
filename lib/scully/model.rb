@@ -27,8 +27,8 @@ module Scully
     :name, :span, :framework, :status, :setup, :assertions, :doubles, :bindings, :helper_calls
   )
 
-  # Severities in report order.
-  SEVERITIES = %i[error warning info].freeze
+  # Severities a rule may declare, in report order.
+  SEVERITIES = %i[error warning].freeze
 
   # A problem reported by a rule.
   Finding = Data.define(:rule_id, :severity, :primary, :secondary, :test_name, :facts, :evidence) do

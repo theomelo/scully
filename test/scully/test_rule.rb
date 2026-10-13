@@ -55,6 +55,16 @@ module Scully
       assert_raises(Rule::DeclarationError) { define(severity: 'severity :fatal') }
     end
 
+    def test_info_severity_is_not_accepted
+      error = assert_raises(Rule::DeclarationError) { define(severity: 'severity :info') }
+
+      assert_equal 'sample: unknown severity :info', error.message
+    end
+
+    def test_error_severity_is_accepted
+      assert_equal :error, define(severity: 'severity :error').severity
+    end
+
     def test_finding_helper_copies_id_and_severity
       label = Label.new(span: Span.new(path: 'a.rb', start_line: 1, start_column: 1, end_line: 1, end_column: 2),
                         text: 'here')

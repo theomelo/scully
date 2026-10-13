@@ -30,10 +30,9 @@ module Scully
     end
 
     def test_findings_sort_by_severity_group_first
-      findings = [finding(:info, :c, 'a.rb', 1, 1), finding(:warning, :b, 'a.rb', 1, 1),
-                  finding(:error, :a, 'z.rb', 9, 9)]
+      findings = [finding(:warning, :b, 'a.rb', 1, 1), finding(:error, :a, 'z.rb', 9, 9)]
 
-      assert_equal %i[error warning info], findings.sort_by(&:sort_key).map(&:severity)
+      assert_equal %i[error warning], findings.sort_by(&:sort_key).map(&:severity)
     end
 
     def test_findings_in_a_group_sort_by_span_then_rule_id
