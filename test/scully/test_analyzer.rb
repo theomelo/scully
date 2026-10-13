@@ -148,10 +148,14 @@ module Scully
       assert_equal :incomplete, report.files.first.status
     end
 
-    def test_default_normalizers_find_no_tests_yet
+    # test_broken's errors are inside its body, below its `def` line: the extent catches them.
+    def test_framework_normalizers_and_not_analyzed_by_extent
       _, report = run_analyzer(normalizers: Analyzer::NORMALIZERS)
+      broken = report.files.find { it.path == 'test/broken_test.rb' }
 
-      assert_equal 0, report.counts[:tests]
+      assert_equal [5, 1], report.counts.values_at(:tests, :not_analyzed)
+      assert_equal([['BrokenTest#test_ok', :active], ['BrokenTest#test_broken', :not_analyzed]],
+                   broken.test_cases.map { [it.name, it.status] })
     end
 
     def test_sources_are_kept_by_path

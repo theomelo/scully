@@ -4,9 +4,8 @@ module Scully
   # Runs discovery, parsing, framework detection, normalization and rules, and collects the
   # results into a RunReport.
   class Analyzer
-    # Framework normalizers turn a SourceFile into TestCases. Placeholders until the framework
-    # normalizers exist.
-    NORMALIZERS = { rspec: ->(_source) { [] }, minitest: ->(_source) { [] } }.freeze
+    # Framework normalizers turn a SourceFile into TestCases.
+    NORMALIZERS = { rspec: Frameworks::RSpec, minitest: Frameworks::Minitest }.freeze
 
     # SourceFiles read during the last run, by path.
     attr_reader :sources
