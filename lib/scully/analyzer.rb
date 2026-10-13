@@ -58,9 +58,11 @@ module Scully
       end
     end
 
+    # Span ends are exclusive: an error that starts right where a test ends is outside it.
     def contains?(outer, inner)
       start = [inner.start_line, inner.start_column]
-      (start <=> [outer.start_line, outer.start_column]) >= 0 && (start <=> [outer.end_line, outer.end_column]) <= 0
+      (start <=> [outer.start_line, outer.start_column]) >= 0 &&
+        (start <=> [outer.end_line, outer.end_column]).negative?
     end
 
     def check(file)

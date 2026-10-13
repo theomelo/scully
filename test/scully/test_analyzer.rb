@@ -58,6 +58,17 @@ module Scully
       FileUtils.remove_entry(@root)
     end
 
+    def write(path, content)
+      FileUtils.mkdir_p(File.join(@root, File.dirname(path)))
+      File.write(File.join(@root, path), content)
+    end
+
+    def file_report(path) = run_analyzer(path).last.files.first
+
+    def start_of(span) = [span.start_line, span.start_column]
+
+    def end_of(span) = [span.end_line, span.end_column]
+
     def run_analyzer(*paths, rules: [EveryTest.new], normalizers: NORMALIZERS)
       analyzer = Analyzer.new(rules:, normalizers:)
       [analyzer, analyzer.run(paths, cwd: @root)]
@@ -117,6 +128,17 @@ module Scully
       refute_empty file.parse_errors
       assert_equal [1, 0], report.counts.values_at(:incomplete, :skipped)
       assert_equal 1, report.exit_status
+    end
+
+    # Prism reports the missing class `end` at the exact position where test_a's `end` finishes.
+    def test_error_starting_at_a_test_end_does_not_mark_the_test
+      write('other/open_class_test.rb', "class OpenTest < Minitest::Test\n  def test_a\n    foo\n  end\n")
+      file = file_report('other/open_class_test.rb')
+      test_case = file.test_cases.first
+
+      assert_includes file.parse_errors.map { start_of(it.span) }, [4, 6]
+      assert_equal [4, 6], end_of(test_case.span)
+      assert_equal :active, test_case.status
     end
 
     def test_unreadable_file_without_a_framework_is_incomplete
