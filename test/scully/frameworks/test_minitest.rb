@@ -157,10 +157,11 @@ module Scully
                      test_case.helper_calls.map { [it.name, it.resolution] })
       end
 
-      def test_framework_and_empty_fields
+      def test_framework_and_setup_bindings
         test_case = normalize(SHAPES).first
 
-        assert_equal [:minitest, [], {}], [test_case.framework, test_case.doubles, test_case.bindings]
+        assert_equal [:minitest, [], { '@order': 'Order.new' }],
+                     [test_case.framework, test_case.doubles, test_case.bindings.transform_values(&:slice)]
       end
     end
   end

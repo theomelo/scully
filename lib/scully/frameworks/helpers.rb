@@ -113,6 +113,16 @@ module Scully
         end
       end
 
+      # [call, its receiver, ...] while the receivers are calls: `a.b(1).c` gives [c, b, a].
+      def chain(node)
+        calls = []
+        while node.is_a?(Prism::CallNode)
+          calls << node
+          node = node.receiver
+        end
+        calls
+      end
+
       # The method name a stub names with its first argument (`receive(:m)`, `stubs(:m)`), or nil.
       def stubbed_name(call)
         argument = arguments(call).first

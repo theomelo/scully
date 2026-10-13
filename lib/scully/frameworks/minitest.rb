@@ -15,8 +15,10 @@ module Scully
       GROUPS = %i[describe].freeze
       EXAMPLES = %i[it specify].freeze
 
-      # The class, group names, setup and bindings visible at a point in the file.
-      Context = Data.define(:class_name, :names, :setup, :bindings)
+      # The class, group names, setup, bindings and setup doubles visible at a point in the file.
+      Context = Data.define(:class_name, :names, :setup, :bindings, :doubles)
+      # Setup kinds whose code runs before the test body.
+      BEFORE = %i[setup before].freeze
 
       include Syntax
 
@@ -29,7 +31,8 @@ module Scully
 
       def test_cases
         @tests = []
-        walk(@source.result.value.statements, Context.new(class_name: nil, names: [], setup: [], bindings: Set[]))
+        walk(@source.result.value.statements,
+             Context.new(class_name: nil, names: [], setup: [], bindings: {}, doubles: []))
         @tests
       end
 
@@ -68,24 +71,16 @@ module Scully
         walk(call.block.body, scope(call.block.body, context.with(names: [*context.names, *description(call)])))
       end
 
-      # Adds the setup and bindings declared directly in a class or group body.
+      # Adds the setup, bindings and setup doubles declared directly in a class or group body.
       def scope(body, context)
-        own = statements(body).filter_map { setup_step(it) }
-        context.with(setup: context.setup + own.map(&:last), bindings: context.bindings | own.filter_map(&:first))
+        own = statements(body).filter_map { [it, Scope.kind(it)] if Scope.kind(it) }
+        Scope.apply(context, own, Doubles.new(@source, :setup))
+             .then { it.with(setup: it.setup + own.map { |node, kind| setup_step(node, kind) }) }
       end
 
-      # [binding name or nil, SetupStep] for a setup declaration, or nil.
-      def setup_step(node)
-        kind = case node
-               when Prism::DefNode then SETUP_METHODS[node.name]
-               when Prism::CallNode then node.receiver.nil? && SETUP_CALLS[node.name]
-               end
-        return unless kind
+      def setup_step(node, kind) = SetupStep.new(kind:, span: span(node.location))
 
-        [binding_for(node, kind), SetupStep.new(kind:, span: @source.span(node.location))]
-      end
-
-      def binding_for(node, kind) = %i[let subject].include?(kind) ? binding_name(node) : nil
+      def span(location) = @source.span(location)
 
       def test_method(node, context)
         add(context, node.body, name: "#{context.class_name}##{node.name}",
@@ -115,8 +110,9 @@ module Scully
 
       def add(context, body, definition:, extent:, **fields)
         assertions, helper_calls = inventory(context).scan(body)
-        @tests << TestCase.new(span: @source.span(definition), extent: @source.span(extent), framework: :minitest,
-                               setup: context.setup, assertions:, doubles: [], bindings: {}, helper_calls:, **fields)
+        @tests << TestCase.new(span: span(definition), extent: span(extent), framework: :minitest, setup: context.setup,
+                               assertions:, helper_calls:, bindings: context.bindings.merge(assignments(body).to_h),
+                               doubles: context.doubles + Stubs.scan(body, Doubles.new(@source, :body)), **fields)
       end
 
       # A `skip` call anywhere in the body skips the test.
@@ -133,6 +129,107 @@ module Scully
       def inventory(context)
         Inventory.new(source: @source, helpers: @helpers, assertion: Assertions.method(:fields),
                       ignored: ->(name) { Assertions::VOCABULARY.include?(name) || context.bindings.include?(name) })
+      end
+
+      # What a class or group's setup gives its tests: bindings and doubles.
+      module Scope
+        module_function
+
+        # [node, kind] pairs => +context+ with their bindings and doubles added.
+        def apply(context, own, doubles)
+          context.with(bindings: context.bindings.merge(*own.map { |node, kind| bindings(node, kind) }),
+                       doubles: context.doubles + own.flat_map { |node, kind| doubles(node, kind, doubles) })
+        end
+
+        # The setup kind a `def setup` or `setup do` declares, or nil.
+        def kind(node)
+          case node
+          when Prism::DefNode then SETUP_METHODS[node.name]
+          when Prism::CallNode then node.receiver.nil? ? SETUP_CALLS[node.name] : nil
+          end
+        end
+
+        # `let(:order) { ... }` binds `order`; setup binds the variables it assigns, such as `@order`.
+        def bindings(node, kind)
+          return { Syntax.binding_name(node) => Syntax.block_value(node) } if %i[let subject].include?(kind)
+
+          BEFORE.include?(kind) ? Syntax.assignments(body(node)).to_h : {}
+        end
+
+        def doubles(node, kind, doubles) = BEFORE.include?(kind) ? Stubs.scan(body(node), doubles) : []
+
+        def body(node) = node.is_a?(Prism::DefNode) ? node.body : node.block&.body
+      end
+
+      # Finds Minitest block stubs (`obj.stub(:m, v) do ... end`), mocha stubs and expectations
+      # (`obj.stubs(:m).returns(v)`, `obj.expects(:m)`), and `Minitest::Mock#expect`.
+      module Stubs
+        # mocha method => whether it is a stub source. `expects` can fail on its own.
+        MOCHA = { stubs: true, expects: false }.freeze
+
+        module_function
+
+        # The TestDoubles in +node+, in source order. +doubles+ is a Frameworks::Doubles.
+        def scan(node, doubles, found = [])
+          node&.compact_child_nodes&.each do |child|
+            next if child.is_a?(Prism::DefNode)
+
+            matched = mocha(child, doubles) || mock_expect(child, doubles)
+            next found.concat(matched) if matched
+
+            found.concat(block_stub(child, doubles))
+            scan(child, doubles, found)
+          end
+          found
+        end
+
+        # `obj.stubs(:m).with(1).returns(v)`: the chain is inside-out, so `stubs` sits under any
+        # `with` and `returns` calls. `stubs(m: v)` stubs several methods.
+        def mocha(node, doubles)
+          chain = Syntax.chain(node)
+          index = chain.index { MOCHA.key?(it.name) && it.receiver } or return
+          fields = fields(chain[index])
+          name = Syntax.stubbed_name(chain[index]) or return pairs(chain[index], node.location, doubles, fields)
+
+          [doubles.build(node.location, method_name: name, returns: returned(chain[...index]), **fields)]
+        end
+
+        def fields(call) = { receiver: call.receiver, stub_source: MOCHA[call.name] }
+
+        def pairs(call, location, doubles, fields)
+          Syntax.keyword_pairs(call).map do |name, value|
+            doubles.build(location, method_name: name, returns: value, **fields)
+          end
+        end
+
+        # The single value given to `returns`; several values are a sequence, not one value.
+        def returned(outer)
+          returns = outer.find { it.name == :returns } or return
+          values = Syntax.arguments(returns)
+          values.first if values.size == 1
+        end
+
+        # `mock.expect(:m, v)` is a message expectation, verified later.
+        def mock_expect(node, doubles)
+          return unless node.is_a?(Prism::CallNode) && node.name == :expect && node.receiver
+
+          name = Syntax.stubbed_name(node) or return
+          [doubles.build(node.location, receiver: node.receiver, method_name: name,
+                                        returns: Syntax.arguments(node)[1], stub_source: false)]
+        end
+
+        # `obj.stub(:m, v) do ... end` stubs only inside its block; the block itself is still scanned.
+        def block_stub(node, doubles)
+          name = block_stub?(node) && Syntax.stubbed_name(node) or return []
+
+          location = node.receiver.location.join(node.closing_loc || node.arguments.location)
+          [doubles.build(location, receiver: node.receiver, method_name: name, returns: Syntax.arguments(node)[1],
+                                   scope: node.block.location)]
+        end
+
+        def block_stub?(node)
+          node.is_a?(Prism::CallNode) && node.name == :stub && node.receiver && node.block.is_a?(Prism::BlockNode)
+        end
       end
 
       # Recognises Minitest assertions, expectations, mocha expectations and mock verification.

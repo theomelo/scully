@@ -242,7 +242,7 @@ module Scully
           target = target(node) or return
           receiver = Syntax.arguments(target).first or return
 
-          matcher = chain(Syntax.arguments(node).first)
+          matcher = Syntax.chain(Syntax.arguments(node).first)
           stubbed(matcher, node.location, doubles, receiver:, stub_source: TARGETS[target.name])
         end
 
@@ -262,16 +262,6 @@ module Scully
               doubles.build(location, method_name: name, returns: value, **fields)
             end
           end
-        end
-
-        # [outer call, its receiver, ...] down to the innermost call.
-        def chain(node)
-          calls = []
-          while node.is_a?(Prism::CallNode)
-            calls << node
-            node = node.receiver
-          end
-          calls
         end
 
         # The single value given to `and_return`; several values are a sequence, not one value.
