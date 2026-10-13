@@ -24,15 +24,13 @@ module Scully
       assert_empty err
     end
 
-    def test_other_arguments_are_not_implemented
-      [[], ['.'], ['--bogus']].each do |argv|
-        status = nil
-        out, err = capture_io { status = CLI.start(argv) }
+    def test_why_is_not_implemented_yet
+      status = nil
+      out, err = capture_io { status = CLI.start(%w[why spec/a_spec.rb:1]) }
 
-        assert_equal 2, status, argv.inspect
-        assert_empty out
-        assert_equal "scully: not implemented yet\n", err
-      end
+      assert_equal 2, status
+      assert_empty out
+      assert_equal "scully: not implemented yet\n", err
     end
   end
 end
