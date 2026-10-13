@@ -7,6 +7,7 @@ module Scully
 end
 
 require_relative 'scully/model'
+require_relative 'scully/discovery'
 require_relative 'scully/source_file'
 require_relative 'scully/frameworks/detector'
 require_relative 'scully/rule'
