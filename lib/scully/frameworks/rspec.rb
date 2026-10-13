@@ -20,8 +20,9 @@ module Scully
       LETS = { let: :let, let!: :let, subject: :subject, subject!: :subject }.freeze
       SETUP = HOOKS.merge(LETS).freeze
 
-      # The names, setup and bindings visible inside a group.
-      Context = Data.define(:names, :setup, :bindings, :skipped)
+      # The names, setup and bindings visible inside a group, and the status a skipped or pending
+      # group gives its examples.
+      Context = Data.define(:names, :setup, :bindings, :marked)
 
       include Syntax
 
@@ -34,7 +35,7 @@ module Scully
 
       def test_cases
         @tests = []
-        walk(@source.result.value.statements, Context.new(names: [], setup: [], bindings: Set[], skipped: false))
+        walk(@source.result.value.statements, Context.new(names: [], setup: [], bindings: Set[], marked: nil))
         @tests
       end
 
@@ -79,7 +80,7 @@ module Scully
         context.with(names: [*context.names, *description(call)],
                      setup: context.setup + own.map { setup_step(it) },
                      bindings: context.bindings | bindings(own),
-                     skipped: context.skipped || Status.skipped_group?(call))
+                     marked: context.marked || Status.group(call))
       end
 
       def own_setup(body) = statements(body).select { it.is_a?(Prism::CallNode) && setup_call?(it) }
@@ -121,12 +122,14 @@ module Scully
         module_function
 
         def of(call, context)
-          return :skipped if context.skipped || SKIPPED_EXAMPLES.include?(call.name)
+          return context.marked if context.marked
+          return :skipped if SKIPPED_EXAMPLES.include?(call.name)
 
           MARKERS[call.name] || metadata(call) || (call.block ? body(call.block.body) || :active : :pending)
         end
 
-        def skipped_group?(call) = SKIPPED_GROUPS.include?(call.name) || !metadata(call).nil?
+        # A skipped or pending group marks every example inside it the same way.
+        def group(call) = SKIPPED_GROUPS.include?(call.name) ? :skipped : metadata(call)
 
         # `:skip`, `:pending`, `skip: ...` or `pending: ...` metadata; a false or nil value does not count.
         def metadata(call)

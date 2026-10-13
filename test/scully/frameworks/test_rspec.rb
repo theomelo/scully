@@ -76,6 +76,23 @@ module Scully
                      tests.map(&:status)
       end
 
+      def test_group_metadata_keeps_pending_and_skipped_apart
+        tests = normalize(<<~RUBY)
+          RSpec.describe Order do
+            describe "later", pending: "not built" do
+              it "is pending" do
+              end
+            end
+            context "off", :skip do
+              it "is skipped" do
+              end
+            end
+          end
+        RUBY
+
+        assert_equal %i[pending skipped], tests.map(&:status)
+      end
+
       def test_shared_examples_and_generated_examples_are_found
         tests = normalize(<<~RUBY)
           RSpec.shared_examples "a priced thing" do
