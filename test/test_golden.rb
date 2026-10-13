@@ -11,7 +11,7 @@ class TestGolden < Minitest::Test
 
   # name => working directory under test/fixtures, CLI arguments, expected exit status.
   CASES = {
-    'empty' => { cwd: 'empty', args: [], status: 0 }
+    'empty' => { cwd: 'empty', args: %w[check], status: 0 }
   }.freeze
 
   CASES.each do |name, spec|
