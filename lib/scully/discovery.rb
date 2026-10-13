@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
+require 'find'
+
 module Scully
   # Expands PATH arguments into the sorted list of test files to analyze.
   #
-  # A file PATH is taken as given. A directory PATH is searched for `spec/**/*_spec.rb` and
-  # `test/**/*_test.rb`; when the directory is itself inside a `spec` or `test` directory
-  # (`scully spec`, `scully spec/models`), that kind is searched directly inside it.
+  # A file PATH is taken as given. A directory PATH is searched recursively for `*_spec.rb` and
+  # `*_test.rb`, skipping vendored, generated and hidden directories below it.
   module Discovery
-    KINDS = %w[spec test].freeze
+    TEST_FILE = /_(spec|test)\.rb\z/
+    SKIPPED_DIRECTORIES = %w[vendor node_modules tmp .git].freeze
 
     module_function
 
@@ -24,16 +26,23 @@ module Scully
       raise Error, "no such file: #{path}" unless absolute.exist?
       return [relative(absolute, root)] unless absolute.directory?
 
-      KINDS.flat_map do |kind|
-        Dir.glob(pattern(absolute, root, kind), base: absolute)
-           .map { absolute.join(it) }.select(&:file?).map { relative(it, root) }
-      end
+      search(absolute.to_s).map { relative(Pathname.new(it), root) }
     end
 
-    def pattern(directory, root, kind)
-      inside = relative(directory, root).split('/').include?(kind)
-      inside ? "**/*_#{kind}.rb" : "#{kind}/**/*_#{kind}.rb"
+    # The directory given on the command line is always searched, even if its name would be skipped.
+    def search(directory)
+      found = []
+      Find.find(directory) do |path|
+        if File.directory?(path)
+          Find.prune if path != directory && skip?(File.basename(path))
+        elsif TEST_FILE.match?(File.basename(path)) && File.file?(path)
+          found << path
+        end
+      end
+      found
     end
+
+    def skip?(name) = SKIPPED_DIRECTORIES.include?(name) || name.start_with?('.')
 
     def relative(path, root) = path.relative_path_from(root).to_s
   end

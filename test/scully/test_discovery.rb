@@ -15,8 +15,21 @@ module Scully
       test/models/user_test.rb
       lib/order.rb
       lib/stray_spec.rb
+      engines/billing/spec/invoice_spec.rb
       vendor/gem/spec/vendored_spec.rb
-      scripts/check_test.rb
+      node_modules/pkg/x_test.rb
+      tmp/cache/old_spec.rb
+      .bundle/gems/y_spec.rb
+      tmp/kept_spec.rb
+    ].freeze
+
+    FOUND = %w[
+      engines/billing/spec/invoice_spec.rb
+      lib/stray_spec.rb
+      spec/models/order_spec.rb
+      spec/pricing_spec.rb
+      test/models/user_test.rb
+      test/order_test.rb
     ].freeze
 
     def setup
@@ -33,14 +46,20 @@ module Scully
 
     def discover(*paths) = Discovery.call(paths, cwd: @root)
 
-    def test_default_path_finds_conventional_files_only
-      assert_equal %w[spec/models/order_spec.rb spec/pricing_spec.rb test/models/user_test.rb test/order_test.rb],
-                   discover
+    def test_default_path_searches_recursively_and_skips_vendored_and_hidden_directories
+      assert_equal FOUND, discover
+      assert_equal FOUND, discover('.')
     end
 
-    def test_spec_and_test_directories_are_searched_directly
-      assert_equal discover, discover('spec', 'test')
+    def test_subdirectories_are_searched_recursively
+      assert_equal %w[spec/models/order_spec.rb spec/pricing_spec.rb test/models/user_test.rb test/order_test.rb],
+                   discover('spec', 'test')
       assert_equal %w[spec/models/order_spec.rb], discover('spec/models')
+      assert_equal %w[engines/billing/spec/invoice_spec.rb], discover('engines')
+    end
+
+    def test_a_skipped_directory_given_explicitly_is_searched
+      assert_equal %w[tmp/cache/old_spec.rb tmp/kept_spec.rb], discover('tmp')
     end
 
     def test_argument_order_does_not_matter
