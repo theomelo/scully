@@ -48,11 +48,11 @@ module Scully
                      parse_errors: [], test_cases: [])
     end
 
-    # A test whose span contains a parse error is partly invented by the parser, so no rule
+    # A test whose extent contains a parse error is partly invented by the parser, so no rule
     # runs on it.
     def mark_not_analyzed(test_cases, parse_errors)
       test_cases.map do |test_case|
-        next test_case unless parse_errors.any? { contains?(test_case.span, it.span) }
+        next test_case unless parse_errors.any? { contains?(test_case.extent, it.span) }
 
         test_case.with(status: :not_analyzed, assertions: [], doubles: [], helper_calls: [])
       end

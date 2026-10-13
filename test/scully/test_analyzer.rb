@@ -39,8 +39,8 @@ module Scully
 
       def test_case(path, first, last)
         span = Span.new(path:, start_line: first, start_column: 3, end_line: last, end_column: 6)
-        TestCase.new(name: "line #{first}", span:, framework: @framework, status: :active, setup: [], assertions: [],
-                     doubles: [], bindings: {}, helper_calls: [])
+        TestCase.new(name: "line #{first}", span:, extent: span, framework: @framework, status: :active, setup: [],
+                     assertions: [], doubles: [], bindings: {}, helper_calls: [])
       end
     end
 

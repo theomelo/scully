@@ -22,9 +22,10 @@ module Scully
   # A call in a test body that may be an assertion helper.
   HelperCall = Data.define(:name, :span, :resolution)
 
-  # One test, normalized so that rules never depend on the framework.
+  # One test, normalized so that rules never depend on the framework. +span+ is the definition
+  # (`it "..."`, `def test_x`) that findings point at; +extent+ is the whole test, through its `end`.
   TestCase = Data.define(
-    :name, :span, :framework, :status, :setup, :assertions, :doubles, :bindings, :helper_calls
+    :name, :span, :extent, :framework, :status, :setup, :assertions, :doubles, :bindings, :helper_calls
   )
 
   # Severities a rule may declare, in report order.
