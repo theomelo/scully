@@ -31,7 +31,7 @@ module Scully
       status, out, err = run_cli('--help')
 
       assert_equal 0, status
-      assert_match(/\AUsage: scully \[options\] \[PATH \.\.\.\]\n {7}scully why \[options\] PATH\[:LINE\]\n/, out)
+      assert_match(/\AUsage: scully check \[options\] \[PATH \.\.\.\]\n {7}scully why \[options\] PATH\[:LINE\]\n/, out)
       %w[--color=WHEN --hyperlinks=WHEN --version --help].each { assert_includes out, it }
       assert_empty err
     end
@@ -49,8 +49,22 @@ module Scully
       assert_empty err
     end
 
+    def test_check_is_the_default_command
+      assert_equal run_cli('check'), run_cli
+      assert_equal run_cli('check', '.'), run_cli('.')
+    end
+
     def test_color_and_hyperlink_values_are_accepted_before_or_after_paths
-      assert_equal 0, run_cli('--color=never', '.', '--hyperlinks', 'always').first
+      assert_equal 0, run_cli('--color=never', 'check', '.', '--hyperlinks', 'always').first
+    end
+
+    def test_command_is_the_first_non_option_argument
+      assert_equal [2, '', "scully: not implemented yet\n"], run_cli('--color=never', 'why', 'spec/a_spec.rb:1')
+    end
+
+    def test_paths_named_like_commands_follow_the_command
+      assert_equal [2, '', "scully: no such file: why\n"], run_cli('check', 'why')
+      assert_equal [2, '', "scully: no such file: check\n"], run_cli('check', 'check')
     end
 
     def test_unknown_option_exits_two_with_hint
@@ -71,10 +85,6 @@ module Scully
 
     def test_why_is_not_implemented_yet
       assert_equal [2, '', "scully: not implemented yet\n"], run_cli('why', 'spec/a_spec.rb:1')
-    end
-
-    def test_double_dash_treats_why_as_a_path
-      assert_equal [2, '', "scully: no such file: why\n"], run_cli('--', 'why')
     end
   end
 end

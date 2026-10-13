@@ -3,8 +3,9 @@
 require 'optparse'
 
 module Scully
-  # Command line entry point: `scully [options] [PATH ...]` and `scully why`.
+  # Command line entry point: `scully check [PATH ...]` (the default) and `scully why`.
   class CLI
+    COMMANDS = %w[check why].freeze
     MODES = %w[auto always never].freeze
     USAGE_HINT = "Run 'scully --help' for usage."
 
@@ -24,10 +25,13 @@ module Scully
       @options = { color: 'auto', hyperlinks: 'auto' }
     end
 
+    # The first non-option argument selects `check` or `why`; anything else runs `check`.
     def start(argv)
-      return fail_with('not implemented yet') if argv.first == 'why'
-
-      catch(:done) { return report(parser.parse!(argv)) }
+      catch(:done) do
+        arguments = parser.parse!(argv)
+        command = COMMANDS.include?(arguments.first) ? arguments.shift : 'check'
+        return command == 'why' ? fail_with('not implemented yet') : check(arguments)
+      end
       0
     rescue OptionParser::ParseError => e
       fail_with(e.message, hint: true)
@@ -37,7 +41,7 @@ module Scully
 
     private
 
-    def report(paths)
+    def check(paths)
       analyzer = Analyzer.new(rules: @rules)
       run = analyzer.run(paths, cwd: @cwd)
       messages = @rules.to_h { [it.class.id, it.class.message] }
@@ -47,7 +51,7 @@ module Scully
 
     def parser
       OptionParser.new do |opts|
-        opts.banner = "Usage: scully [options] [PATH ...]\n       scully why [options] PATH[:LINE]"
+        opts.banner = "Usage: scully check [options] [PATH ...]\n       scully why [options] PATH[:LINE]"
         opts.separator ''
         opts.on('--color=WHEN', MODES, 'Colour output: auto, always, never (default auto)') { @options[:color] = it }
         opts.on('--hyperlinks=WHEN', MODES, 'Link cop names in `scully why`: auto, always, never (default auto)') do
