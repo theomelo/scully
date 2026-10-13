@@ -2,6 +2,7 @@
 
 module Scully
   # A region of a source file. Lines and columns are 1-based; columns count characters.
+  # The end column is exclusive, so a zero-length span has start_column == end_column.
   Span = Data.define(:path, :start_line, :start_column, :end_line, :end_column) do
     def sort_key = [path.b, start_line, start_column]
   end

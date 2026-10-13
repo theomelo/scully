@@ -2,6 +2,7 @@
 
 require_relative 'scully/version'
 require_relative 'scully/model'
+require_relative 'scully/source_file'
 require_relative 'scully/cli'
 
 module Scully
