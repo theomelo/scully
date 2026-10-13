@@ -8,7 +8,8 @@ module Scully
     # blocks in test classes, and minitest/spec `it` blocks inside `describe`.
     class Minitest
       TEST_METHOD = /\Atest_/
-      SETUP_METHODS = { setup: :setup, before_setup: :setup, teardown: :teardown, after_teardown: :teardown }.freeze
+      SETUP_METHODS = { before_setup: :setup, setup: :setup, after_setup: :setup,
+                        before_teardown: :teardown, teardown: :teardown, after_teardown: :teardown }.freeze
       SETUP_CALLS = { setup: :setup, teardown: :teardown, before: :before, after: :teardown, let: :let,
                       subject: :subject }.freeze
       GROUPS = %i[describe].freeze

@@ -72,6 +72,24 @@ module Scully
         assert_equal %i[active active pending active skipped skipped], tests.map(&:status)
       end
 
+      def test_every_lifecycle_hook_is_setup_and_never_counts
+        test_case = normalize(<<~RUBY).first
+          class HooksTest < Minitest::Test
+            def before_setup = super
+            def after_setup = assert(true)
+            def before_teardown = assert(true)
+            def after_teardown = super
+
+            def test_runs
+              run_it
+            end
+          end
+        RUBY
+
+        assert_equal %i[setup setup teardown teardown], test_case.setup.map(&:kind)
+        assert_empty test_case.assertions
+      end
+
       def test_setup_and_teardown_are_kept_but_never_count
         tests = normalize(SHAPES)
 
