@@ -3,7 +3,11 @@
 require 'bundler/gem_tasks'
 require 'minitest/test_task'
 
-Minitest::TestTask.create
+# Only test_*.rb files are the gem's own tests; *_test.rb files under test/fixtures are sample
+# input for scully and must never run.
+Minitest::TestTask.create do |task|
+  task.test_globs = ['test/**/test_*.rb']
+end
 
 require 'rubocop/rake_task'
 
