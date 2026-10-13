@@ -69,6 +69,34 @@ module Scully
       end
     end
 
+    # Reading of DSL calls shared by both normalizers.
+    module Syntax
+      module_function
+
+      def statements(node) = node.is_a?(Prism::StatementsNode) ? node.body : [node].compact
+
+      # `it "..."` up to its block: the call name and its arguments, with parentheses if any.
+      def definition(call)
+        call.message_loc.join(call.closing_loc || call.arguments&.location || call.message_loc)
+      end
+
+      # The description a group or test is written with; symbols and hashes are metadata.
+      def description(call)
+        case (argument = call.arguments&.arguments&.first)
+        when nil, Prism::KeywordHashNode, Prism::SymbolNode then nil
+        when Prism::StringNode then argument.unescaped
+        when Prism::InterpolatedStringNode then argument.parts.map(&:slice).join
+        else argument.slice
+        end
+      end
+
+      # The name a `let(:name)` or `subject(:name)` binds; a bare `subject` binds `subject`.
+      def binding_name(call)
+        argument = call.arguments&.arguments&.first
+        argument.is_a?(Prism::SymbolNode) ? argument.unescaped.to_sym : call.name
+      end
+    end
+
     # Collects the assertions and candidate helper calls in a test body, in source order.
     #
     # +assertion+ is called with each CallNode and returns the Assertion fields other than the

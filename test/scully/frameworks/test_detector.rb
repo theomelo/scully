@@ -4,7 +4,7 @@ require 'test_helper'
 
 module Scully
   module Frameworks
-    class TestDetector < Minitest::Test
+    class TestDetector < ::Minitest::Test
       def detect(source, path: 'lib/sample.rb')
         Detector.detect(path, Prism.parse(source).value)
       end

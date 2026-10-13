@@ -4,7 +4,7 @@ require 'test_helper'
 
 module Scully
   module Frameworks
-    class TestHelpers < Minitest::Test
+    class TestHelpers < ::Minitest::Test
       SOURCE = <<~RUBY
         def checks_total(order) = assert_equal(3, order.total)
         def builds_order = Order.new

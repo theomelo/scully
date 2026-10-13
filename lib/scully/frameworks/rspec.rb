@@ -23,6 +23,8 @@ module Scully
       # The names, setup and bindings visible inside a group.
       Context = Data.define(:names, :setup, :bindings, :skipped)
 
+      include Syntax
+
       def self.call(source) = new(source).test_cases
 
       def initialize(source)
@@ -41,8 +43,6 @@ module Scully
       def walk(node, context)
         statements(node).each { statement(it, context) }
       end
-
-      def statements(node) = node.is_a?(Prism::StatementsNode) ? node.body : [node].compact
 
       def statement(node, context)
         case node
@@ -78,21 +78,15 @@ module Scully
         own = own_setup(call.block.body)
         context.with(names: [*context.names, *description(call)],
                      setup: context.setup + own.map { setup_step(it) },
-                     bindings: context.bindings | own.filter_map { binding_name(it) },
+                     bindings: context.bindings | bindings(own),
                      skipped: context.skipped || Status.skipped_group?(call))
       end
 
       def own_setup(body) = statements(body).select { it.is_a?(Prism::CallNode) && setup_call?(it) }
 
+      def bindings(setup_calls) = setup_calls.select { LETS.key?(it.name) }.map { binding_name(it) }
+
       def setup_step(call) = SetupStep.new(kind: SETUP[call.name], span: span(call.location))
-
-      # `let(:order)` binds `order`; a bare `subject { ... }` binds `subject`.
-      def binding_name(call)
-        return unless LETS.key?(call.name)
-
-        argument = call.arguments&.arguments&.first
-        argument.is_a?(Prism::SymbolNode) ? argument.unescaped.to_sym : call.name
-      end
 
       def example(call, context)
         assertions, helper_calls = inventory(context).scan(call.block&.body)
@@ -113,20 +107,6 @@ module Scully
 
       def name(context, description, node)
         [*context.names, description || "example at line #{node.location.start_line}"].join(' ')
-      end
-
-      # `it "..."` up to its block: the call name and its arguments, with parentheses if any.
-      def definition(call)
-        call.message_loc.join(call.closing_loc || call.arguments&.location || call.message_loc)
-      end
-
-      def description(call)
-        case (argument = call.arguments&.arguments&.first)
-        when nil, Prism::KeywordHashNode, Prism::SymbolNode then nil
-        when Prism::StringNode then argument.unescaped
-        when Prism::InterpolatedStringNode then argument.parts.map(&:slice).join
-        else argument.slice
-        end
       end
 
       def span(location) = @source.span(location)
