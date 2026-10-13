@@ -10,8 +10,9 @@ module Scully
   class SourceFile
     attr_reader :path, :source, :result, :parse_errors, :problem
 
-    def self.read(path)
-      bytes = File.binread(path)
+    # Reads +path+, resolved against +base+ when given; spans keep +path+ as written.
+    def self.read(path, base: nil)
+      bytes = File.binread(base ? File.join(base, path) : path)
       source = bytes.force_encoding(Encoding::UTF_8)
       return new(path, problem: 'file is not valid UTF-8') unless source.valid_encoding?
 
