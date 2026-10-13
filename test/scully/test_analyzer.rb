@@ -11,7 +11,8 @@ module Scully
       'spec/a_spec.rb' => "RSpec.describe A do\n  it 'one' do\n  end\nend\n",
       'test/broken_test.rb' => "class BrokenTest < Minitest::Test\n  def test_ok\n  end\n\n  " \
                                "def test_broken\n    x = (1 +\n  end\nend\n",
-      'lib/helper.rb' => "puts 1\n"
+      'lib/helper.rb' => "puts 1\n",
+      'lib/broken.rb' => "def broken(\n"
     }.freeze
 
     # Reports every active test it sees, as a warning on the test's span.
@@ -106,6 +107,23 @@ module Scully
 
       assert_empty report.findings
       assert_equal 1, report.exit_status
+    end
+
+    def test_broken_file_without_a_framework_is_incomplete_not_skipped
+      _, report = run_analyzer('lib/broken.rb')
+      file = report.files.first
+
+      assert_equal [:incomplete, nil, nil], [file.status, file.framework, file.skip_reason]
+      refute_empty file.parse_errors
+      assert_equal [1, 0], report.counts.values_at(:incomplete, :skipped)
+      assert_equal 1, report.exit_status
+    end
+
+    def test_unreadable_file_without_a_framework_is_incomplete
+      File.binwrite(File.join(@root, 'lib/latin1.rb'), "# caf\xE9\n".b)
+      _, report = run_analyzer('lib/latin1.rb')
+
+      assert_equal :incomplete, report.files.first.status
     end
 
     def test_default_normalizers_find_no_tests_yet

@@ -30,14 +30,15 @@ module Scully
     def analyze_file(path, cwd)
       source = @sources[path] = SourceFile.read(path, base: cwd)
       framework = Frameworks::Detector.detect(path, source.result&.value)
-      return skipped(path) if framework.nil? && source.problem.nil?
+      # A broken file is incomplete even without a framework: its errors may hide the tests.
+      return skipped(path) if framework.nil? && !source.incomplete?
 
       FileReport.new(path:, framework:, status: source.incomplete? ? :incomplete : :complete, skip_reason: nil,
                      parse_errors: source.parse_errors, test_cases: test_cases(source, framework))
     end
 
     def test_cases(source, framework)
-      return [] unless source.result
+      return [] unless source.result && framework
 
       mark_not_analyzed(@normalizers.fetch(framework).call(source), source.parse_errors)
     end

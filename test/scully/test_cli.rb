@@ -49,6 +49,15 @@ module Scully
       assert_empty err
     end
 
+    def test_check_on_a_broken_file_without_tests_exits_one
+      FileUtils.mkdir_p(File.join(@dir, 'lib'))
+      File.write(File.join(@dir, 'lib/broken.rb'), "def broken(\n")
+      status, out, = run_cli('check', 'lib/broken.rb')
+
+      assert_equal 1, status
+      assert_includes out, 'summary: 1 files (1 incomplete, 0 skipped), 0 tests, 0 errors, 0 warnings'
+    end
+
     def test_check_is_the_default_command
       assert_equal run_cli('check'), run_cli
       assert_equal run_cli('check', '.'), run_cli('.')
