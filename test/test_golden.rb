@@ -13,6 +13,8 @@ class TestGolden < Minitest::Test
                           spec/shared_examples_spec.rb spec/teardown_only_spec.rb].freeze
   MINITEST_NO_ASSERTION = %w[test/good_test.rb test/no_assertion_test.rb test/skipped_test.rb
                              test/teardown_only_test.rb].freeze
+  RSPEC_TAUTOLOGY = %w[spec/tautology_spec.rb spec/tautology_cases_spec.rb spec/not_tautology_spec.rb].freeze
+  MINITEST_TAUTOLOGY = %w[test/tautology_test.rb test/not_tautology_test.rb].freeze
 
   # name => working directory under test/fixtures, CLI arguments, expected exit status.
   CASES = {
@@ -20,7 +22,9 @@ class TestGolden < Minitest::Test
     'rspec_no_assertion' => { cwd: 'rspec', args: ['check', *RSPEC_NO_ASSERTION], status: 1 },
     'rspec_good' => { cwd: 'rspec', args: %w[check spec/good_spec.rb], status: 0 },
     'minitest_no_assertion' => { cwd: 'minitest', args: ['check', *MINITEST_NO_ASSERTION], status: 1 },
-    'minitest_good' => { cwd: 'minitest', args: %w[check test/good_test.rb], status: 0 }
+    'minitest_good' => { cwd: 'minitest', args: %w[check test/good_test.rb], status: 0 },
+    'rspec_tautology' => { cwd: 'rspec', args: ['check', *RSPEC_TAUTOLOGY], status: 1 },
+    'minitest_tautology' => { cwd: 'minitest', args: ['check', *MINITEST_TAUTOLOGY], status: 1 }
   }.freeze
 
   CASES.each do |name, spec|
