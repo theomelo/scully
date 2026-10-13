@@ -163,6 +163,71 @@ module Scully
         assert_equal [:minitest, [], { '@order': 'Order.new' }],
                      [test_case.framework, test_case.doubles, test_case.bindings.transform_values(&:slice)]
       end
+
+      DOUBLES = <<~RUBY
+        class TaxTest < Minitest::Test
+          def setup
+            @tax = Tax.new
+            @tax.stubs(:rate).returns(0.2)
+          end
+
+          def teardown
+            @tax.stubs(:close).returns(true)
+          end
+
+          def test_doubles
+            tax = Tax.new
+            tax.stub(:rate, 0.2) do
+              assert_equal 0.2, tax.rate
+            end
+            gateway.stubs(fee: 3, open: true)
+            gateway.expects(:charge).with(1).returns(true)
+            gateway.stubs(:refund).returns(1, 2)
+            mock = Minitest::Mock.new
+            mock.expect(:call, 5, [1])
+          end
+        end
+
+        describe Tax do
+          let(:tax) { Tax.new }
+          before { tax.stubs(:rate).returns(0.5) }
+
+          it "reads" do
+            _(tax.rate).must_equal 0.5
+          end
+        end
+      RUBY
+
+      def describe_double(double)
+        [double.origin, "#{double.receiver.slice}.#{double.method_name}", double.returns&.slice, double.stub_source,
+         double.span.start_line]
+      end
+
+      def test_doubles_from_setup_then_body_in_source_order
+        tests = normalize(DOUBLES)
+
+        assert_equal([[:setup, '@tax.rate', '0.2', true, 4], [:body, 'tax.rate', '0.2', true, 13],
+                      [:body, 'gateway.fee', '3', true, 16], [:body, 'gateway.open', 'true', true, 16],
+                      [:body, 'gateway.charge', 'true', false, 17], [:body, 'gateway.refund', nil, true, 18],
+                      [:body, 'mock.call', '5', false, 20]], tests.first.doubles.map { describe_double(it) })
+        assert_equal([[:setup, 'tax.rate', '0.5', true, 26]], tests.last.doubles.map { describe_double(it) })
+      end
+
+      def test_block_stub_span_stops_before_its_block_and_scope_is_the_block
+        block_stub = normalize(DOUBLES).first.doubles[1]
+
+        assert_equal [13, 5, 25], [block_stub.span.start_line, block_stub.span.start_column, block_stub.span.end_column]
+        assert_equal [13, 26, 15, 8], [block_stub.scope.start_line, block_stub.scope.start_column,
+                                       block_stub.scope.end_line, block_stub.scope.end_column]
+      end
+
+      def test_bindings_from_setup_lets_and_locals
+        tests = normalize(DOUBLES)
+
+        assert_equal({ '@tax': 'Tax.new', tax: 'Tax.new', mock: 'Minitest::Mock.new' },
+                     tests.first.bindings.transform_values(&:slice))
+        assert_equal({ tax: 'Tax.new' }, tests.last.bindings.transform_values(&:slice))
+      end
     end
   end
 end
