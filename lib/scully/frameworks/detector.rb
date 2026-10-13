@@ -10,7 +10,9 @@ module Scully
 
       RSPEC_HELPERS = %w[spec_helper rails_helper].freeze
       MINITEST_HELPERS = %w[test_helper].freeze
-      RSPEC_GROUPS = %i[describe shared_examples shared_examples_for shared_context].freeze
+      # Every example group name the RSpec normalizer reads, so a file it can analyze is not skipped.
+      RSPEC_GROUPS = %i[describe context feature example_group shared_examples shared_examples_for shared_context
+                        fdescribe fcontext ffeature xdescribe xcontext xfeature].freeze
       MINITEST_BASE = /(Test|TestCase)\z/
 
       module_function

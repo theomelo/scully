@@ -18,6 +18,12 @@ module Scully
         assert_equal :rspec, detect("require_relative '../spec_helper'\n")
       end
 
+      def test_every_group_the_rspec_normalizer_reads_is_rspec
+        assert_equal :rspec, detect("RSpec.feature 'Checkout' do\nend\n")
+        assert_equal :rspec, detect("xdescribe Order do\nend\n")
+        assert_equal (RSpec::GROUPS + RSpec::SKIPPED_GROUPS).sort, Detector::RSPEC_GROUPS.sort
+      end
+
       def test_bare_describe_without_minitest_is_rspec
         assert_equal :rspec, detect("describe Order do\nend\n")
         assert_equal :rspec, detect("shared_examples 'a thing' do\nend\n")
