@@ -41,10 +41,12 @@ class TestGolden < Minitest::Test
     define_method(:"test_#{name}") { check(name, **spec) }
   end
 
+  # With no findings, only the summary and evidence lines are printed.
   def test_directory_without_test_files_reports_zero_files_and_tests
     out, status = run_cli('empty', %w[check])
 
-    assert_match(/^summary: 0 files \(0 incomplete, 0 skipped\), 0 tests, /, out)
+    assert_equal "summary: 0 files (0 incomplete, 0 skipped), 0 tests, 0 errors, 0 warnings\n" \
+                 "evidence: static analysis only; coverage and mutation testing not run\n", out
     assert_equal 0, status
   end
 
