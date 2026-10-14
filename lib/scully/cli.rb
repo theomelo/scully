@@ -13,15 +13,17 @@ module Scully
     RULES = [Rules::NoAssertion, Rules::Tautology].freeze
 
     # Runs the command and returns the process exit status.
-    def self.start(argv, out: $stdout, err: $stderr, cwd: Dir.pwd, rules: RULES.map(&:new))
-      new(out:, err:, cwd:, rules:).start(argv.dup)
+    # +env+ is read only to decide colour and hyperlinks.
+    def self.start(argv, out: $stdout, err: $stderr, cwd: Dir.pwd, env: ENV)
+      new(out:, err:, cwd:, env:).start(argv.dup)
     end
 
-    def initialize(out:, err:, cwd:, rules:)
+    def initialize(out:, err:, cwd:, env:)
       @out = out
+      @env = env
       @err = err
       @cwd = cwd
-      @rules = rules
+      @rules = RULES.map(&:new)
       @options = { color: 'auto', hyperlinks: 'auto' }
     end
 
@@ -45,8 +47,12 @@ module Scully
       analyzer = Analyzer.new(rules: @rules)
       run = analyzer.run(paths, cwd: @cwd)
       messages = [Rules::Parse, *@rules.map(&:class)].to_h { [it.id, it.message] }
-      @out.print Render::Report.render(run, messages:, sources: analyzer.sources)
+      @out.print Render::Report.render(run, messages:, sources: analyzer.sources, terminal:)
       run.exit_status
+    end
+
+    def terminal
+      Render::Terminal.new(env: @env, tty: @out.tty?, color: @options[:color], hyperlinks: @options[:hyperlinks])
     end
 
     def parser

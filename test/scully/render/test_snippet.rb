@@ -107,6 +107,26 @@ module Scully
         refute_includes render(finding(Label.new(span: span(7, 5, 32), text: 'p'))), 'inconclusive'
       end
 
+      def test_colour_marks_the_severity_word_and_markers
+        terminal = Terminal.new(env: {}, tty: false, color: 'always')
+        colourful = finding(Label.new(span: span(7, 5, 8), text: 'p'), Label.new(span: span(2, 3, 6), text: 's'))
+        result = Snippet.render(colourful,
+                                message: MESSAGE, source: source(TAUTOLOGY_SOURCE), terminal:)
+
+        assert_equal "\e[1;31merror\e[0m[tautology]: #{MESSAGE}", result.lines(chomp: true).first
+        assert_includes result, "  |   \e[34m---\e[0m s\n"
+        assert_includes result, "  |     \e[1;31m^^^\e[0m p\n"
+      end
+
+      def test_warning_markers_use_the_warning_colour
+        terminal = Terminal.new(env: {}, tty: false, color: 'always')
+        result = Snippet.render(finding(Label.new(span: span(7, 5, 8), text: 'p'), severity: :warning),
+                                message: MESSAGE, source: source(TAUTOLOGY_SOURCE), terminal:)
+
+        assert_includes result, "\e[1;33mwarning\e[0m[tautology]"
+        assert_includes result, "\e[1;33m^^^\e[0m p"
+      end
+
       def test_trailing_whitespace_is_removed
         result = render(finding(Label.new(span: span(1, 1, 2), text: '')), "x   \n")
 

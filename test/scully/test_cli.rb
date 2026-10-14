@@ -16,10 +16,10 @@ module Scully
       FileUtils.remove_entry(@dir)
     end
 
-    def run_cli(*argv)
+    def run_cli(*argv, env: {})
       out = StringIO.new
       err = StringIO.new
-      status = CLI.start(argv, out:, err:, cwd: @dir)
+      status = CLI.start(argv, out:, err:, cwd: @dir, env:)
       [status, out.string, err.string]
     end
 
@@ -75,6 +75,29 @@ module Scully
     def test_paths_named_like_commands_follow_the_command
       assert_equal [2, '', "scully: no such file: why\n"], run_cli('check', 'why')
       assert_equal [2, '', "scully: no such file: check\n"], run_cli('check', 'check')
+    end
+
+    def write_broken_file
+      FileUtils.mkdir_p(File.join(@dir, 'lib'))
+      File.write(File.join(@dir, 'lib/broken.rb'), "def broken(\n")
+    end
+
+    def test_color_always_colours_the_report
+      write_broken_file
+
+      assert_includes run_cli('--color=always', 'lib/broken.rb')[1], "\e[1;31merror\e[0m[parse]"
+    end
+
+    def test_color_auto_is_off_when_stdout_is_not_a_terminal
+      write_broken_file
+
+      refute_includes run_cli('lib/broken.rb')[1], "\e["
+    end
+
+    def test_no_color_does_not_override_color_always
+      write_broken_file
+
+      assert_includes run_cli('--color=always', 'lib/broken.rb', env: { 'NO_COLOR' => '1' })[1], "\e[1;31m"
     end
 
     def test_unknown_option_exits_two_with_hint

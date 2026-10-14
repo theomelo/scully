@@ -10,11 +10,14 @@ module Scully
       COMMENT_GAP = '   '
 
       # +messages+ maps rule ids to their header messages; +sources+ maps paths to objects
-      # that respond to line(number).
-      def self.render(report, messages:, sources:) = new(report, messages, sources).render
+      # that respond to line(number); +terminal+ adds colour when it is on.
+      def self.render(report, messages:, sources:, terminal: Terminal::PLAIN)
+        new(report, messages, sources, terminal).render
+      end
 
-      def initialize(report, messages, sources)
+      def initialize(report, messages, sources, terminal)
         @report = report
+        @terminal = terminal
         @messages = messages
         @sources = sources
       end
@@ -40,7 +43,7 @@ module Scully
 
       def block(finding)
         Snippet.render(finding, message: @messages.fetch(finding.rule_id),
-                                source: @sources.fetch(finding.primary.span.path))
+                                source: @sources.fetch(finding.primary.span.path), terminal: @terminal)
       end
 
       def skipped_group
