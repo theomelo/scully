@@ -15,6 +15,16 @@ module Scully
         new(report, messages, sources, terminal).render
       end
 
+      # One `scully why <path>:<line>   # <rule_id>` line per finding, commands padded to the longest.
+      def self.commands(findings)
+        commands = findings.map do
+          span = it.primary.span
+          ["scully why #{span.path}:#{span.start_line}", it.rule_id]
+        end
+        width = commands.map { it.first.size }.max
+        commands.map { |command, rule_id| "#{command.ljust(width)}#{COMMENT_GAP}# #{rule_id}" }
+      end
+
       def initialize(report, messages, sources, terminal)
         @report = report
         @terminal = terminal
@@ -60,15 +70,7 @@ module Scully
           "#{counts[:tests]} tests#{not_analyzed}, #{counts[:errors]} errors, #{counts[:warnings]} warnings"
       end
 
-      def follow_up
-        commands = @report.findings.map do
-          span = it.primary.span
-          ["scully why #{span.path}:#{span.start_line}", it.rule_id]
-        end
-        width = commands.map { it.first.size }.max
-        lines = commands.map { |command, rule_id| "#{command.ljust(width)}#{COMMENT_GAP}# #{rule_id}\n" }
-        "\n#{FOLLOW_UP}\n\n#{lines.join}"
-      end
+      def follow_up = "\n#{FOLLOW_UP}\n\n#{self.class.commands(@report.findings).map { "#{it}\n" }.join}"
     end
   end
 end

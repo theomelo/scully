@@ -46,9 +46,8 @@ module Scully
       def location(path, line, terminal: Terminal::PLAIN, file: nil)
         analyzer = Analyzer.new(rules: RULES.values.drop(1))
         run = analyzer.run([path], cwd: CONTRACT)
-        findings = run.findings.select { it.primary.span.start_line == line }
-        Why.new(file || run.files.first, rules: RULES, source: analyzer.sources.fetch(path), terminal:)
-           .location(findings)
+        Why.new(file || run.files.first, findings: run.findings, rules: RULES, source: analyzer.sources.fetch(path),
+                                         terminal:).location(line)
       end
 
       def test_location_prints_the_block_then_each_section
@@ -122,16 +121,23 @@ module Scully
         assert_includes evidence([9, 10, 31]), 'parse errors on lines 9, 10 and 31, so'
       end
 
-      def test_findings_at_one_location_are_each_printed_in_full
-        tautology = location('spec/tautology_spec.rb', 7)
+      # Report order puts the error first; at one location, column then rule id decide.
+      def test_findings_at_one_location_are_each_printed_in_full_by_column_then_rule_id
         run = Analyzer.new(rules: RULES.values.drop(1)).run(['spec/tautology_spec.rb'], cwd: CONTRACT)
-        finding = run.findings.first
-        source = SourceFile.read('spec/tautology_spec.rb', base: CONTRACT)
-        file = FileReport.new(path: 'spec/tautology_spec.rb', framework: :rspec, status: :complete, skip_reason: nil,
-                              parse_errors: [], test_cases: [])
-        text = Why.new(file, rules: RULES, source:).location([finding, finding])
+        tautology = run.findings.first
+        other = tautology.with(rule_id: :no_assertion, severity: :warning, facts: { helper_calls: [] })
+        why = Why.new(run.files.first, findings: [tautology, other], rules: RULES,
+                                       source: SourceFile.read('spec/tautology_spec.rb', base: CONTRACT))
+        blocks = why.location(7).split(/\n(?=error\[|warning\[)/)
 
-        assert_equal "#{tautology}\n#{tautology}", text
+        headers = blocks.map { it[/\A\w+\[\w+\]/] }
+
+        assert_equal ['warning[no_assertion]', 'error[tautology]'], headers
+        assert_equal location('spec/tautology_spec.rb', 7), blocks.last
+      end
+
+      def test_location_without_a_finding_is_nil
+        assert_nil location('spec/tautology_spec.rb', 3)
       end
     end
   end

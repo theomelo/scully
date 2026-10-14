@@ -69,7 +69,8 @@ module Scully
     end
 
     def test_command_is_the_first_non_option_argument
-      assert_equal [2, '', "scully: not implemented yet\n"], run_cli('--color=never', 'why', 'spec/a_spec.rb:1')
+      assert_equal [2, '', "scully: no such file: spec/a_spec.rb\n"],
+                   run_cli('--color=never', 'why', 'spec/a_spec.rb:1')
     end
 
     def test_paths_named_like_commands_follow_the_command
@@ -116,8 +117,90 @@ module Scully
       assert_equal [2, '', "scully: no such file: nope\n"], run_cli('.', 'nope')
     end
 
-    def test_why_is_not_implemented_yet
-      assert_equal [2, '', "scully: not implemented yet\n"], run_cli('why', 'spec/a_spec.rb:1')
+    NO_ASSERTION = <<~RUBY
+      RSpec.describe Order do
+        it "sums line items" do
+          Order.new.total
+        end
+
+        it "ships" do
+          Order.new.ship
+        end
+      end
+    RUBY
+
+    def write(path, text)
+      FileUtils.mkdir_p(File.dirname(File.join(@dir, path)))
+      File.write(File.join(@dir, path), text)
+    end
+
+    def test_why_with_a_line_explains_the_finding_there
+      write('spec/order_spec.rb', NO_ASSERTION)
+      status, out, err = run_cli('why', 'spec/order_spec.rb:6')
+
+      assert_equal 0, status
+      assert out.start_with?("warning[no_assertion]: test makes no assertion\n --> spec/order_spec.rb:6:3\n"), out
+      assert_includes out, "\nbecause:\n"
+      assert_empty err
+    end
+
+    def test_why_without_a_line_lists_the_findings_in_the_file
+      write('spec/order_spec.rb', NO_ASSERTION)
+
+      assert_equal [0, <<~TEXT, ''], run_cli('why', 'spec/order_spec.rb')
+        spec/order_spec.rb
+
+          warning[no_assertion]  2:3  test makes no assertion
+          warning[no_assertion]  6:3  test makes no assertion
+
+        Use `scully why <location>` for details:
+
+        scully why spec/order_spec.rb:2   # no_assertion
+        scully why spec/order_spec.rb:6   # no_assertion
+      TEXT
+    end
+
+    def test_why_on_a_file_without_findings_says_so
+      write('spec/good_spec.rb', "RSpec.describe Order do\n  it 'x' do\n    expect(1).to eq(1)\n  end\nend\n")
+
+      assert_equal [0, "spec/good_spec.rb: no findings\n", ''], run_cli('why', 'spec/good_spec.rb')
+    end
+
+    def test_why_on_an_incomplete_file_without_findings_says_it_is_inconclusive
+      File.binwrite(File.join(@dir, 'latin1_test.rb'), "# caf\xE9\n".b)
+
+      assert_equal [0, "latin1_test.rb (incomplete file: inconclusive): no findings\n", ''],
+                   run_cli('why', 'latin1_test.rb')
+    end
+
+    def test_why_at_a_line_without_a_finding_lists_the_file_findings_and_exits_one
+      write('spec/order_spec.rb', NO_ASSERTION)
+
+      assert_equal [1, '', <<~TEXT], run_cli('why', 'spec/order_spec.rb:4')
+        scully: no finding at spec/order_spec.rb:4
+        Findings in this file:
+          scully why spec/order_spec.rb:2   # no_assertion
+          scully why spec/order_spec.rb:6   # no_assertion
+      TEXT
+    end
+
+    def test_why_at_a_line_of_a_file_without_findings_exits_one
+      write('spec/good_spec.rb', "RSpec.describe Order do\nend\n")
+
+      assert_equal [1, '', "scully: no finding at spec/good_spec.rb:1\nNo findings in this file.\n"],
+                   run_cli('why', 'spec/good_spec.rb:1')
+    end
+
+    def test_why_on_a_missing_file_exits_two
+      assert_equal [2, '', "scully: no such file: spec/nope_spec.rb\n"], run_cli('why', 'spec/nope_spec.rb:3')
+    end
+
+    def test_why_needs_exactly_one_file
+      write('spec/order_spec.rb', NO_ASSERTION)
+
+      assert_equal [2, '', "scully: why needs one file\n#{HINT}"], run_cli('why')
+      assert_equal [2, '', "scully: why needs one file: spec\n#{HINT}"], run_cli('why', 'spec')
+      assert_equal [2, '', "scully: why needs one file: extra\n#{HINT}"], run_cli('why', 'spec/order_spec.rb', 'extra')
     end
   end
 end

@@ -25,18 +25,42 @@ module Scully
       SEE_ALSO = 'see also: '
       NO_COMPANION = 'no matching cop in rubocop-rspec or rubocop-minitest'
       URL_INDENT = ' ' * 12
+      DETAILS = 'Use `scully why <location>` for details:'
+      OTHERS = 'Findings in this file:'
+      COLUMN_GAP = '  '
 
-      # +file+ is the FileReport the findings come from; +rules+ maps rule ids to rules; +source+
-      # responds to line(number); +terminal+ adds colour and hyperlinks when they are on.
-      def initialize(file, rules:, source:, terminal: Terminal::PLAIN)
+      # +file+ is a FileReport and +findings+ its findings in report order; +rules+ maps rule ids
+      # to rules; +source+ responds to line(number); +terminal+ adds colour and hyperlinks when
+      # they are on.
+      def initialize(file, findings:, rules:, source:, terminal: Terminal::PLAIN)
         @file = file
+        @findings = findings
         @rules = rules
         @source = source
         @terminal = terminal
       end
 
-      # Every finding in +findings+, explained in full, separated by blank lines.
-      def location(findings) = findings.map { explanation(it) }.join("\n")
+      # Every finding whose primary span starts on +line+, by column then rule id, explained in
+      # full and separated by blank lines; nil when there is none.
+      def location(line)
+        found = @findings.select { it.primary.span.start_line == line }
+        return if found.empty?
+
+        found.sort_by { [it.primary.span.start_column, it.rule_id.to_s] }.map { explanation(it) }.join("\n")
+      end
+
+      # The file's findings, one row each, then a `scully why` command for each.
+      def index
+        return "#{@file.path}#{status}: no findings\n" if @findings.empty?
+
+        "#{@file.path}#{status}\n\n#{table(rows).join}\n#{DETAILS}\n\n#{commands.join}"
+      end
+
+      # The message for a +line+ without findings, pointing at the file's findings instead.
+      def missing(line)
+        others = @findings.empty? ? "No findings in this file.\n" : "#{OTHERS}\n#{commands("  ").join}"
+        "scully: no finding at #{@file.path}:#{line}\n#{others}"
+      end
 
       # Wraps +text+ greedily on spaces so no line exceeds +width+ characters, prefix included.
       # The first line starts with +first+, the others with +indent+. A word longer than the
@@ -53,10 +77,31 @@ module Scully
 
       private
 
+      def status = @file.status == :incomplete ? Snippet::INCONCLUSIVE : ''
+
+      def message(finding) = @rules.fetch(finding.rule_id).class.message
+
+      # Each column but the last padded to its widest cell.
+      def table(rows)
+        widths = rows.transpose[0...-1].map { |cells| cells.map(&:size).max }
+        rows.map do |*cells, last|
+          "#{INDENT}#{cells.zip(widths).map { |cell, width| cell.ljust(width) }.join(COLUMN_GAP)}#{COLUMN_GAP}#{last}\n"
+        end
+      end
+
+      def rows
+        @findings.map do
+          span = it.primary.span
+          ["#{it.severity}[#{it.rule_id}]", "#{span.start_line}:#{span.start_column}", message(it)]
+        end
+      end
+
+      def commands(indent = '') = Report.commands(@findings).map { "#{indent}#{it}\n" }
+
       def explanation(finding)
+        block = Snippet.render(finding, message: message(finding), source: @source, terminal: @terminal)
         rule = @rules.fetch(finding.rule_id)
         declaration = rule.class
-        block = Snippet.render(finding, message: declaration.message, source: @source, terminal: @terminal)
         lines = [*section('because', [declaration.because]), *section('what happened', rule.explain(finding)),
                  *section('help', [declaration.help]), '', *evidence, *see_also(declaration.companions)]
         "#{block}#{lines.map { "#{it}\n" }.join}"
