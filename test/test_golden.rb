@@ -24,7 +24,11 @@ class TestGolden < Minitest::Test
     'minitest_no_assertion' => { cwd: 'minitest', args: ['check', *MINITEST_NO_ASSERTION], status: 1 },
     'minitest_good' => { cwd: 'minitest', args: %w[check test/good_test.rb], status: 0 },
     'rspec_tautology' => { cwd: 'rspec', args: ['check', *RSPEC_TAUTOLOGY], status: 1 },
-    'minitest_tautology' => { cwd: 'minitest', args: ['check', *MINITEST_TAUTOLOGY], status: 1 }
+    'minitest_tautology' => { cwd: 'minitest', args: ['check', *MINITEST_TAUTOLOGY], status: 1 },
+    # A file outside spec/ and test/ is read only when named, and listed as skipped.
+    'skipped' => { cwd: 'skipped', args: %w[check helper_test.rb], status: 0 },
+    # The test that overlaps the syntax error is counted but not analyzed.
+    'minitest_syntax_error' => { cwd: 'minitest', args: %w[check test/syntax_error_test.rb], status: 1 }
   }.freeze
 
   CASES.each do |name, spec|

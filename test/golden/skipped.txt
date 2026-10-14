@@ -1,0 +1,6 @@
+skipped (1)
+
+skipped: helper_test.rb: no RSpec or Minitest test structure found
+
+summary: 1 files (0 incomplete, 1 skipped), 0 tests, 0 errors, 0 warnings
+evidence: static analysis only; coverage and mutation testing not run
