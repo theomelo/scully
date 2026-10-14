@@ -86,7 +86,7 @@ module Scully
 
       match = arguments.first.b.match(/\A(.+):(\d+)\z/m)
       path, line = match ? [match[1], match[2].to_i] : [arguments.first.b, nil]
-      offending = File.directory?(File.join(@cwd.b, path)) ? arguments.first : arguments[1]
+      offending = File.directory?(File.expand_path(path, @cwd.b)) ? arguments.first : arguments[1]
       raise UsageError, "why needs one file: #{offending}" if offending
 
       [path, line]

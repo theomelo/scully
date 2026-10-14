@@ -226,5 +226,12 @@ module Scully
       assert_equal [2, '', "scully: why needs one file: spec\n#{HINT}"], run_cli('why', 'spec')
       assert_equal [2, '', "scully: why needs one file: extra\n#{HINT}"], run_cli('why', 'spec/order_spec.rb', 'extra')
     end
+
+    def test_why_rejects_an_absolute_directory
+      FileUtils.mkdir_p(File.join(@dir, 'empty'))
+      directory = File.join(@dir, 'empty')
+
+      assert_equal [2, '', "scully: why needs one file: #{directory}\n#{HINT}"], run_cli('why', directory)
+    end
   end
 end
