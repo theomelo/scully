@@ -195,6 +195,30 @@ module Scully
       assert_equal [2, '', "scully: no such file: spec/nope_spec.rb\n"], run_cli('why', 'spec/nope_spec.rb:3')
     end
 
+    # Under LANG=C, ARGV arrives tagged US-ASCII even when it holds UTF-8 bytes.
+    def locale_encoded(text) = text.b.force_encoding(Encoding::US_ASCII)
+
+    def test_check_accepts_a_non_ascii_path_in_the_locale_encoding
+      write('spec/café_spec.rb', NO_ASSERTION)
+      status, out, = run_cli('check', locale_encoded('spec/café_spec.rb'))
+
+      assert_equal 1, status
+      assert_includes out, 'scully why spec/café_spec.rb:2'
+    end
+
+    def test_why_accepts_a_non_ascii_path_in_the_locale_encoding
+      write('spec/café_spec.rb', NO_ASSERTION)
+      status, out, = run_cli('why', locale_encoded('spec/café_spec.rb:2'))
+
+      assert_equal 0, status
+      assert_includes out, ' --> spec/café_spec.rb:2:3'
+    end
+
+    def test_missing_non_ascii_path_is_named_in_the_error
+      assert_equal [2, '', "scully: no such file: spec/naïve_spec.rb\n"],
+                   run_cli('why', locale_encoded('spec/naïve_spec.rb'))
+    end
+
     def test_why_needs_exactly_one_file
       write('spec/order_spec.rb', NO_ASSERTION)
 

@@ -15,8 +15,16 @@ module Scully
     # Runs the command and returns the process exit status.
     # +env+ is read only to decide colour and hyperlinks.
     def self.start(argv, out: $stdout, err: $stderr, cwd: Dir.pwd, env: ENV)
-      new(out:, err:, cwd:, env:).start(argv.dup)
+      new(out:, err:, cwd:, env:).start(argv.map { argument(it) })
     end
+
+    # Arguments arrive in the locale's encoding: US-ASCII under LANG=C even when they hold UTF-8
+    # bytes, which makes any regexp match raise. They are read as UTF-8 when valid, else as bytes.
+    def self.argument(text)
+      utf8 = text.b.force_encoding(Encoding::UTF_8)
+      utf8.valid_encoding? ? utf8 : text.b
+    end
+    private_class_method :argument
 
     def initialize(out:, err:, cwd:, env:)
       @out = out
@@ -71,8 +79,8 @@ module Scully
                             terminal:)
     end
 
-    # PATH[:LINE] from the only argument. Arguments arrive in the locale's encoding, so they are
-    # matched as bytes.
+    # PATH[:LINE] from the only argument, matched as bytes so a name that is not valid UTF-8
+    # still parses.
     def why_target(arguments)
       raise UsageError, 'why needs one file' if arguments.empty?
 
