@@ -1,0 +1,23 @@
+error[tautology]: assertion checks a value the test stubbed
+ --> spec/tautology_spec.rb:7:5
+  |
+2 |   let(:tax) { double(rate: 0.2) }
+  |               ----------------- stubbed in setup to return `0.2`
+...
+7 |     expect(tax.rate).to eq(0.2)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+because:
+  The assertion checks a value the test itself stubbed, so it can never fail and says
+  nothing about the code under test.
+
+what happened:
+  `tax.rate` is stubbed to return `0.2` (line 2), and the expectation on line 7 compares
+  `tax.rate` with `0.2`. No code under test runs between the stub and the assertion.
+
+help:
+  Assert on the result of the code that uses the stubbed object, not on the stub itself. If
+  the test only documents the stub, delete it.
+
+evidence: static analysis (complete file)
+see also: no matching cop in rubocop-rspec or rubocop-minitest

@@ -1,0 +1,25 @@
+warning[no_assertion]: test makes no assertion
+ --> test/syntax_error_test.rb:4:3 (incomplete file: inconclusive)
+  |
+4 |   def test_validates_email
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+because:
+  A test with no assertion passes whatever the code does, so it gives coverage without
+  evidence.
+
+what happened:
+  No assertion, expectation, or assertion helper was found in this test's body.
+  Calls checked as possible helpers: none.
+
+help:
+  Add an assertion that states what the test claims. If an assertion lives in a helper
+  defined in another file, scully cannot see it yet and this finding may be a false
+  positive.
+
+evidence: inconclusive. This file has parse errors on lines 9 and 10, so parts of it may
+  not have been analyzed. Fix them and run again.
+see also: RSpec/NoExpectationExample (rubocop-rspec)
+            https://docs.rubocop.org/rubocop-rspec/latest/cops_rspec.html#rspecnoexpectationexample
+          Minitest/NoAssertions (rubocop-minitest, disabled by default)
+            https://docs.rubocop.org/rubocop-minitest/latest/cops_minitest.html#minitestnoassertions
