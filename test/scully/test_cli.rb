@@ -206,6 +206,19 @@ module Scully
       assert_includes out, 'scully why spec/café_spec.rb:2'
     end
 
+    # Error messages echo the argument's original bytes, even when they are not valid UTF-8.
+    def test_errors_echo_non_ascii_arguments_byte_for_byte
+      write('spec/café_spec.rb', NO_ASSERTION)
+      FileUtils.mkdir_p(File.join(@dir, 'café'))
+      missing, = run_cli('why', locale_encoded("caf\xE9_spec.rb")).values_at(2)
+      directory, = run_cli('why', locale_encoded('café')).values_at(2)
+      status, _, no_finding = run_cli('why', locale_encoded('spec/café_spec.rb:3'))
+
+      assert_equal "scully: no such file: caf\xE9_spec.rb\n".b, missing.b
+      assert_equal "scully: why needs one file: café\n#{HINT}", directory
+      assert_equal [1, "scully: no finding at spec/café_spec.rb:3\n"], [status, no_finding.lines.first]
+    end
+
     def test_why_accepts_a_non_ascii_path_in_the_locale_encoding
       write('spec/café_spec.rb', NO_ASSERTION)
       status, out, = run_cli('why', locale_encoded('spec/café_spec.rb:2'))
