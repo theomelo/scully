@@ -5,9 +5,11 @@ require 'stringio'
 
 # Runs the CLI in-process against fixture directories and compares stdout with the files in
 # test/golden. Set SCULLY_UPDATE_GOLDEN=1 to rewrite the golden files, then review the diff.
+# contract.txt is never rewritten: it is the published example and the code must match it.
 class TestGolden < Minitest::Test
   FIXTURES = File.expand_path('fixtures', __dir__)
   GOLDEN = File.expand_path('golden', __dir__)
+  FIXED = %w[contract].freeze
 
   RSPEC_NO_ASSERTION = %w[spec/good_spec.rb spec/no_assertion_spec.rb spec/pending_spec.rb
                           spec/shared_examples_spec.rb spec/teardown_only_spec.rb].freeze
@@ -28,7 +30,9 @@ class TestGolden < Minitest::Test
     # A file outside spec/ and test/ is read only when named, and listed as skipped.
     'skipped' => { cwd: 'skipped', args: %w[check helper_test.rb], status: 0 },
     # The test that overlaps the syntax error is counted but not analyzed.
-    'minitest_syntax_error' => { cwd: 'minitest', args: %w[check test/syntax_error_test.rb], status: 1 }
+    'minitest_syntax_error' => { cwd: 'minitest', args: %w[check test/syntax_error_test.rb], status: 1 },
+    'rspec_syntax_error' => { cwd: 'rspec', args: %w[check spec/syntax_error_spec.rb], status: 1 },
+    'contract' => { cwd: 'contract', args: %w[check], status: 1 }
   }.freeze
 
   CASES.each do |name, spec|
@@ -40,7 +44,7 @@ class TestGolden < Minitest::Test
     err = StringIO.new
     actual = Scully::CLI.start(args, out:, err:, cwd: File.join(FIXTURES, cwd))
     golden = File.join(GOLDEN, "#{name}.txt")
-    File.write(golden, out.string) if ENV['SCULLY_UPDATE_GOLDEN'] == '1'
+    File.write(golden, out.string) if ENV['SCULLY_UPDATE_GOLDEN'] == '1' && !FIXED.include?(name)
 
     assert_equal File.read(golden), out.string
     assert_equal status, actual

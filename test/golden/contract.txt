@@ -1,0 +1,57 @@
+errors (4)
+
+error[tautology]: assertion checks a value the test stubbed
+ --> spec/tautology_spec.rb:7:5
+  |
+2 |   let(:tax) { double(rate: 0.2) }
+  |               ----------------- stubbed in setup to return `0.2`
+...
+7 |     expect(tax.rate).to eq(0.2)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_spec.rb:11:5
+   |
+ 4 |   before { allow(gateway).to receive(:fee).and_return(3) }
+   |            --------------------------------------------- stubbed in setup to return `3`
+...
+11 |     expect(gateway.fee).to eq(3)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[parse]: syntax error
+ --> test/syntax_error_test.rb:9:13
+  |
+9 |     x = (1 +
+  |             ^ expected a matching `)`
+
+error[parse]: syntax error
+  --> test/syntax_error_test.rb:10:3
+   |
+10 |   end
+   |   ^^^ unexpected 'end', assuming it is closing the parent method definition (+2 more)
+
+warnings (2)
+
+warning[no_assertion]: test makes no assertion
+ --> spec/no_assertion_spec.rb:2:3
+  |
+2 |   it "sums line items" do
+  |   ^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+warning[no_assertion]: test makes no assertion
+ --> test/syntax_error_test.rb:4:3 (incomplete file: inconclusive)
+  |
+4 |   def test_validates_email
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+summary: 3 files (1 incomplete, 0 skipped), 5 tests (1 not analyzed), 4 errors, 2 warnings
+evidence: static analysis only; coverage and mutation testing not run
+
+Use `scully why <location>` for more info about each finding:
+
+scully why spec/tautology_spec.rb:7       # tautology
+scully why spec/tautology_spec.rb:11      # tautology
+scully why test/syntax_error_test.rb:9    # parse
+scully why test/syntax_error_test.rb:10   # parse
+scully why spec/no_assertion_spec.rb:2    # no_assertion
+scully why test/syntax_error_test.rb:4    # no_assertion

@@ -1,0 +1,30 @@
+errors (2)
+
+error[parse]: syntax error
+ --> spec/syntax_error_spec.rb:9:30
+  |
+9 |     total = (Cart.new.total +
+  |                              ^ expected a matching `)`
+
+error[parse]: syntax error
+  --> spec/syntax_error_spec.rb:10:3
+   |
+10 |   end
+   |   ^^^ unexpected 'end', assuming it is closing the parent 'do'..'end' block (+2 more)
+
+warnings (1)
+
+warning[no_assertion]: test makes no assertion
+ --> spec/syntax_error_spec.rb:4:3 (incomplete file: inconclusive)
+  |
+4 |   it "adds an item" do
+  |   ^^^^^^^^^^^^^^^^^ this test runs code but never checks a result
+
+summary: 1 files (1 incomplete, 0 skipped), 2 tests (1 not analyzed), 2 errors, 1 warnings
+evidence: static analysis only; coverage and mutation testing not run
+
+Use `scully why <location>` for more info about each finding:
+
+scully why spec/syntax_error_spec.rb:9    # parse
+scully why spec/syntax_error_spec.rb:10   # parse
+scully why spec/syntax_error_spec.rb:4    # no_assertion
