@@ -1,2 +1,2 @@
-summary: 1 files (0 incomplete, 0 skipped), 7 tests, 0 errors, 0 warnings
+summary: 1 files (0 incomplete, 0 skipped), 10 tests, 0 errors, 0 warnings
 evidence: static analysis only; coverage and mutation testing not run

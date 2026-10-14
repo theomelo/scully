@@ -138,6 +138,33 @@ module Scully
                      tests.last.assertions.map(&:kind)
       end
 
+      def test_minitest_assertions_count_with_or_without_a_receiver
+        tests = normalize(<<~RUBY)
+          RSpec.describe "Orders page" do
+            it "asserts" do
+              assert page.has_content?("Shipped")
+            end
+            it "refutes" do
+              refute page.has_content?("Cancelled")
+            end
+            it "uses Capybara matchers" do
+              page.assert_selector("#order")
+              page.assert_no_selector("#missing")
+              assert_equal 3, order.total
+              refute_nil order.id
+            end
+            it "only reads the page" do
+              page.has_content?("Shipped")
+              asserted = order.ship
+            end
+          end
+        RUBY
+
+        assert_equal([[:other], [:other], %i[other other other other], []],
+                     tests.map { it.assertions.map(&:kind) })
+        assert_empty tests[2].helper_calls
+      end
+
       def test_comparison_keeps_subject_and_expected_expressions
         assertion = normalize(<<~RUBY).first.assertions.first
           RSpec.describe Order do

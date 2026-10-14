@@ -24,4 +24,8 @@ RSpec.describe Order do
     allow(order).to receive(:paid?).and_return(true)
     order.ship
   end
+
+  it "reads the page without asserting" do
+    page.has_content?("Shipped")
+  end
 end
