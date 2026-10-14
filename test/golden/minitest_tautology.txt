@@ -1,0 +1,45 @@
+errors (4)
+
+error[tautology]: assertion checks a value the test stubbed
+  --> test/tautology_test.rb:10:5
+   |
+ 6 |     @tax.stubs(:rate).returns(0.2)
+   |     ------------------------------ stubbed in setup to return `0.2`
+...
+10 |     assert_equal 0.2, @tax.rate
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> test/tautology_test.rb:16:7
+   |
+15 |     gateway.stub(:fee, 3) do
+   |     --------------------- stubbed here to return `3`
+16 |       assert_equal 3, gateway.fee
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> test/tautology_test.rb:23:5
+   |
+22 |     cart.stubs(:total).returns(30)
+   |     ------------------------------ stubbed here to return `30`
+23 |     assert_equal 30, cart.total
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> test/tautology_test.rb:32:5
+   |
+29 |   before { shop.stubs(:currency).returns("EUR") }
+   |            ------------------------------------ stubbed in setup to return `"EUR"`
+...
+32 |     _(shop.currency).must_equal "EUR"
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+summary: 2 files (0 incomplete, 0 skipped), 9 tests, 4 errors, 0 warnings
+evidence: static analysis only; coverage and mutation testing not run
+
+Use `scully why <location>` for more info about each finding:
+
+scully why test/tautology_test.rb:10   # tautology
+scully why test/tautology_test.rb:16   # tautology
+scully why test/tautology_test.rb:23   # tautology
+scully why test/tautology_test.rb:32   # tautology

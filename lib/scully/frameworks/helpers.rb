@@ -95,6 +95,68 @@ module Scully
         argument = call.arguments&.arguments&.first
         argument.is_a?(Prism::SymbolNode) ? argument.unescaped.to_sym : call.name
       end
+
+      # The value a `let` or `subject` block returns: its last expression.
+      def block_value(call) = call.block.is_a?(Prism::BlockNode) ? statements(call.block.body).last : nil
+
+      # An expression that reads +name+, standing for the object a let or variable is bound to.
+      def identifier(name) = Prism.parse(name.to_s).value.statements.body.first
+
+      def arguments(call) = call.arguments&.arguments || []
+
+      # [method name, value] pairs from `name: value` arguments with symbol keys.
+      def keyword_pairs(call)
+        arguments(call).grep(Prism::KeywordHashNode).flat_map(&:elements).filter_map do |element|
+          next unless element.is_a?(Prism::AssocNode) && element.key.is_a?(Prism::SymbolNode)
+
+          [element.key.unescaped.to_sym, element.value]
+        end
+      end
+
+      # [call, its receiver, ...] while the receivers are calls: `a.b(1).c` gives [c, b, a].
+      def chain(node)
+        calls = []
+        while node.is_a?(Prism::CallNode)
+          calls << node
+          node = node.receiver
+        end
+        calls
+      end
+
+      # The method name a stub names with its first argument (`receive(:m)`, `stubs(:m)`), or nil.
+      def stubbed_name(call)
+        argument = arguments(call).first
+        argument.is_a?(Prism::SymbolNode) ? argument.unescaped.to_sym : nil
+      end
+
+      # Local and instance variables assigned in +node+, in source order: [[name, value], ...].
+      def assignments(node, found = [])
+        node&.compact_child_nodes&.each do |child|
+          next if child.is_a?(Prism::DefNode)
+
+          found << [child.name, child.value] if assignment?(child)
+          assignments(child, found)
+        end
+        found
+      end
+
+      def assignment?(node) = node.is_a?(Prism::LocalVariableWriteNode) || node.is_a?(Prism::InstanceVariableWriteNode)
+    end
+
+    # Builds TestDoubles for one file and one origin (:setup or :body).
+    class Doubles
+      def initialize(source, origin)
+        @source = source
+        @origin = origin
+      end
+
+      # +location+ is the stub's Prism location; +scope+ is the location of the block a stub is
+      # limited to, if any.
+      # +fields+ are the TestDouble's receiver, method_name and returns.
+      def build(location, stub_source: true, scope: nil, **fields)
+        TestDouble.new(span: @source.span(location), origin: @origin, scope: scope && @source.span(scope),
+                       stub_source:, **fields)
+      end
     end
 
     # Collects the assertions and candidate helper calls in a test body, in source order.

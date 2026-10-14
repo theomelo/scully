@@ -1,0 +1,84 @@
+errors (8)
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:10:5
+   |
+ 9 |     allow(cart).to receive(:total).and_return(30)
+   |     --------------------------------------------- stubbed here to return `30`
+10 |     expect(cart.total).to eq(30)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:15:5
+   |
+14 |     allow(cart).to receive_messages(count: 2, empty?: false)
+   |     -------------------------------------------------------- stubbed here to return `2`
+15 |     expect(cart.count).to eql(2)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:19:5
+   |
+ 4 |   let(:shop) { instance_double(Shop, name: "Corner", open?: true) }
+   |                -------------------------------------------------- stubbed in setup to return `"Corner"`
+...
+19 |     expect(shop.name).to eq("Corner")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:24:5
+   |
+23 |     coupon = double("coupon", percent: 10)
+   |              ----------------------------- stubbed here to return `10`
+24 |     expect(coupon.percent).to equal(10)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:29:7
+   |
+ 6 |   before { allow(gateway).to receive(:currency).and_return("EUR") }
+   |            ------------------------------------------------------ stubbed in setup to return `"EUR"`
+...
+29 |       expect(gateway.currency).to eq("EUR")
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:35:8
+   |
+ 6 |   before { allow(gateway).to receive(:currency).and_return("EUR") }
+   |            ------------------------------------------------------ stubbed in setup to return `"EUR"`
+...
+35 |   it { is_expected.to eq("EUR") }
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+ --> spec/tautology_spec.rb:7:5
+  |
+2 |   let(:tax) { double(rate: 0.2) }
+  |               ----------------- stubbed in setup to return `0.2`
+...
+7 |     expect(tax.rate).to eq(0.2)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_spec.rb:11:5
+   |
+ 4 |   before { allow(gateway).to receive(:fee).and_return(3) }
+   |            --------------------------------------------- stubbed in setup to return `3`
+...
+11 |     expect(gateway.fee).to eq(3)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+summary: 3 files (0 incomplete, 0 skipped), 15 tests, 8 errors, 0 warnings
+evidence: static analysis only; coverage and mutation testing not run
+
+Use `scully why <location>` for more info about each finding:
+
+scully why spec/tautology_cases_spec.rb:10   # tautology
+scully why spec/tautology_cases_spec.rb:15   # tautology
+scully why spec/tautology_cases_spec.rb:19   # tautology
+scully why spec/tautology_cases_spec.rb:24   # tautology
+scully why spec/tautology_cases_spec.rb:29   # tautology
+scully why spec/tautology_cases_spec.rb:35   # tautology
+scully why spec/tautology_spec.rb:7          # tautology
+scully why spec/tautology_spec.rb:11         # tautology

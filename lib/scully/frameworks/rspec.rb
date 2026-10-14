@@ -20,9 +20,11 @@ module Scully
       LETS = { let: :let, let!: :let, subject: :subject, subject!: :subject }.freeze
       SETUP = HOOKS.merge(LETS).freeze
 
-      # The names, setup and bindings visible inside a group, and the status a skipped or pending
-      # group gives its examples.
-      Context = Data.define(:names, :setup, :bindings, :marked)
+      # The names, setup, bindings and setup doubles visible inside a group, and the status a
+      # skipped or pending group gives its examples.
+      Context = Data.define(:names, :setup, :bindings, :doubles, :marked)
+      # `is_expected` and a bare `should` check the subject.
+      SUBJECT_READERS = %i[is_expected should should_not].freeze
 
       include Syntax
 
@@ -35,7 +37,8 @@ module Scully
 
       def test_cases
         @tests = []
-        walk(@source.result.value.statements, Context.new(names: [], setup: [], bindings: Set[], marked: nil))
+        walk(@source.result.value.statements,
+             Context.new(names: [], setup: [], bindings: {}, doubles: [], marked: nil))
         @tests
       end
 
@@ -77,33 +80,43 @@ module Scully
 
       def group_context(call, context)
         own = own_setup(call.block.body)
-        context.with(names: [*context.names, *description(call)],
-                     setup: context.setup + own.map { setup_step(it) },
-                     bindings: context.bindings | bindings(own),
-                     marked: context.marked || Status.group(call))
+        context.with(names: [*context.names, *description(call)], marked: context.marked || Status.group(call),
+                     **setup_from(own, context))
+      end
+
+      def setup_from(own, context)
+        { setup: context.setup + own.map { setup_step(it) },
+          bindings: context.bindings.merge(*own.map { Scope.bindings(it) }),
+          doubles: context.doubles + own.flat_map { Scope.doubles(it, Doubles.new(@source, :setup)) } }
       end
 
       def own_setup(body) = statements(body).select { it.is_a?(Prism::CallNode) && setup_call?(it) }
 
-      def bindings(setup_calls) = setup_calls.select { LETS.key?(it.name) }.map { binding_name(it) }
-
       def setup_step(call) = SetupStep.new(kind: SETUP[call.name], span: span(call.location))
 
       def example(call, context)
-        assertions, helper_calls = inventory(context).scan(call.block&.body)
         add(context, name: name(context, description(call), call), definition: definition(call),
-                     extent: call.location, status: Status.of(call, context), assertions:, helper_calls:)
+                     extent: call.location, status: Status.of(call, context), **contents(call.block&.body, context))
+      end
+
+      # Bindings, assertions, helper calls and doubles of an example body.
+      def contents(body, context)
+        bindings = context.bindings.merge(assignments(body).to_h)
+        assertions, helper_calls = inventory(context).scan(body)
+        { bindings:, helper_calls:, assertions: assertions.map { Scope.read_subject(it, bindings) },
+          doubles: context.doubles + Stubs.scan(body, Doubles.new(@source, :body)) }
       end
 
       # A bare `it` inside a group is a pending example; Ruby reads it as the block's `it` parameter.
       def bare_example(node, context)
         add(context, name: name(context, nil, node), definition: node.location, extent: node.location,
-                     status: :pending, assertions: [], helper_calls: [])
+                     status: :pending, assertions: [], helper_calls: [], bindings: context.bindings,
+                     doubles: context.doubles)
       end
 
       def add(context, definition:, extent:, **fields)
         @tests << TestCase.new(span: span(definition), extent: span(extent), framework: :rspec, setup: context.setup,
-                               doubles: [], bindings: {}, **fields)
+                               **fields)
       end
 
       def name(context, description, node)
@@ -168,6 +181,113 @@ module Scully
         def marker(node) = node.is_a?(Prism::CallNode) && node.receiver.nil? ? MARKERS[node.name] : nil
       end
 
+      # What a group's setup gives its examples: bindings from `let`/`subject` and doubles.
+      module Scope
+        module_function
+
+        # `let(:tax) { ... }` binds `tax`; a named subject also binds `subject`.
+        def bindings(call)
+          return {} unless LETS.key?(call.name)
+
+          value = Syntax.block_value(call)
+          name = Syntax.binding_name(call)
+          call.name.start_with?('subject') ? { name => value, subject: value } : { name => value }
+        end
+
+        # Doubles from a `let`/`subject` value, and stubs in `before` hooks; teardown hooks run
+        # too late to matter.
+        def doubles(call, doubles)
+          if LETS.key?(call.name)
+            Stubs.attributes(Syntax.block_value(call), Syntax.binding_name(call), doubles) || []
+          elsif HOOKS[call.name] == :before
+            Stubs.scan(call.block&.body, doubles)
+          else
+            []
+          end
+        end
+
+        # `is_expected.to eq(x)` checks the value `subject` is bound to.
+        def read_subject(assertion, bindings)
+          reader = assertion.subject
+          return assertion unless reader.is_a?(Prism::CallNode) && reader.receiver.nil? &&
+                                  SUBJECT_READERS.include?(reader.name)
+
+          assertion.with(subject: bindings[:subject])
+        end
+      end
+
+      # Finds RSpec stubs (`allow(r).to receive(:m).and_return(v)`, `receive_messages`), message
+      # expectations that also return a value, and doubles created with preset attributes.
+      module Stubs
+        # Stub target => whether it is a stub source. `expect(...).to receive` can fail on its own.
+        TARGETS = { allow: true, allow_any_instance_of: true, expect: false, expect_any_instance_of: false }.freeze
+        DOUBLES = %i[double instance_double class_double object_double spy instance_spy class_spy object_spy].freeze
+
+        module_function
+
+        # The TestDoubles in +node+, in source order. +doubles+ is a Frameworks::Doubles.
+        def scan(node, doubles, found = [])
+          node&.compact_child_nodes&.each do |child|
+            next if child.is_a?(Prism::DefNode)
+
+            matched = stub(child, doubles) || local_double(child, doubles)
+            matched ? found.concat(matched) : scan(child, doubles, found)
+          end
+          found
+        end
+
+        # `allow(r).to receive(:m).and_return(v)`: the matcher chain is inside-out, so the
+        # innermost call names the method and an `and_return` around it gives the value.
+        def stub(node, doubles)
+          target = target(node) or return
+          receiver = Syntax.arguments(target).first or return
+
+          matcher = Syntax.chain(Syntax.arguments(node).first)
+          stubbed(matcher, node.location, doubles, receiver:, stub_source: TARGETS[target.name])
+        end
+
+        # The `allow(r)` or `expect(r)` a `.to` call is made on, or nil.
+        def target(node)
+          target = node.receiver if node.is_a?(Prism::CallNode) && node.name == :to
+          target if target.is_a?(Prism::CallNode) && target.receiver.nil? && TARGETS.key?(target.name)
+        end
+
+        def stubbed(chain, location, doubles, **fields)
+          case chain.last&.name
+          when :receive
+            name = Syntax.stubbed_name(chain.last) or return
+            [doubles.build(location, method_name: name, returns: returned(chain), **fields)]
+          when :receive_messages
+            Syntax.keyword_pairs(chain.last).map do |name, value|
+              doubles.build(location, method_name: name, returns: value, **fields)
+            end
+          end
+        end
+
+        # The single value given to `and_return`; several values are a sequence, not one value.
+        def returned(chain)
+          and_return = chain.find { it.name == :and_return } or return
+          values = Syntax.arguments(and_return)
+          values.first if values.size == 1
+        end
+
+        # `tax = double(rate: 0.2)`
+        def local_double(node, doubles)
+          attributes(node.value, node.name, doubles) if node.is_a?(Prism::LocalVariableWriteNode)
+        end
+
+        # The preset attributes of a double bound to +name+, one TestDouble each; nil when +value+
+        # does not create a double.
+        def attributes(value, name, doubles)
+          return unless value.is_a?(Prism::CallNode) && value.receiver.nil? && DOUBLES.include?(value.name)
+
+          receiver = Syntax.identifier(name)
+          Syntax.keyword_pairs(value).map do |method_name, returns|
+            doubles.build(value.location, receiver:, method_name:, returns:)
+          end
+        end
+      end
+
       # Recognises RSpec expectations and classifies their matchers.
       module Expectations
         TARGETS = %i[expect is_expected are_expected expect_any_instance_of].freeze
@@ -193,12 +313,14 @@ module Scully
         def fields(call)
           if runner?(call)
             matcher(argument(call), subject(call.receiver), negated: call.name != :to)
-          elsif SHOULD.include?(call.name)
-            matcher(argument(call), call.receiver, negated: call.name == :should_not)
+          elsif SHOULD.include?(call.name) then should(call)
           elsif should_operator?(call)
             { kind: :comparison, comparison: :equality, subject: call.receiver.receiver, expected: argument(call) }
           end
         end
+
+        # `x.should eq(1)`; a bare `should` stands in for the subject until the normalizer resolves it.
+        def should(call) = matcher(argument(call), call.receiver || call, negated: call.name == :should_not)
 
         # `expect(x).to`, `is_expected.not_to`, `expect { }.to`
         def runner?(call)
@@ -207,8 +329,14 @@ module Scully
             TARGETS.include?(target.name)
         end
 
-        # `expect(x)` checks x; `is_expected` and block expectations have no subject expression.
-        def subject(target) = target.name == :expect ? argument(target) : nil
+        # `expect(x)` checks x. `is_expected` stands in for the subject until the normalizer
+        # resolves it; block expectations have no subject expression.
+        def subject(target)
+          case target.name
+          when :expect then argument(target)
+          when :is_expected then target
+          end
+        end
 
         # `x.should == 1`
         def should_operator?(call)
