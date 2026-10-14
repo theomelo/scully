@@ -47,6 +47,21 @@ class TestGolden < Minitest::Test
     define_method(:"test_#{name}") { check(name, **spec) }
   end
 
+  SGR = /\e\[[0-9;]*m/
+
+  # FR-019: colour is the only difference between terminal and piped output.
+  CASES.each do |name, spec|
+    next if spec[:stream] == :err
+
+    define_method(:"test_#{name}_with_colour_strips_to_the_piped_output") do
+      piped, = run_cli(spec[:cwd], spec[:args])
+      coloured, = run_cli(spec[:cwd], ['--color=always', *spec[:args]])
+
+      assert_equal piped, coloured.gsub(SGR, '')
+      assert_match SGR, coloured if piped.match?(/^(error|warning)\[/)
+    end
+  end
+
   # With no findings, only the summary and evidence lines are printed.
   def test_directory_without_test_files_reports_zero_files_and_tests
     out, status = run_cli('empty', %w[check])
@@ -71,7 +86,7 @@ class TestGolden < Minitest::Test
 
   def run_cli(cwd, args)
     out = StringIO.new
-    status = Scully::CLI.start(args, out:, err: StringIO.new, cwd: File.expand_path(cwd, FIXTURES))
+    status = Scully::CLI.start(args, out:, err: StringIO.new, cwd: File.expand_path(cwd, FIXTURES), env: {})
     [out.string, status]
   end
 
