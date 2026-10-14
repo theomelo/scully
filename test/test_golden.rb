@@ -2,6 +2,8 @@
 
 require 'test_helper'
 require 'stringio'
+require 'tmpdir'
+require 'fileutils'
 
 # Runs the CLI in-process against fixture directories and compares stdout with the files in
 # test/golden. Set SCULLY_UPDATE_GOLDEN=1 to rewrite the golden files, then review the diff.
@@ -37,6 +39,32 @@ class TestGolden < Minitest::Test
 
   CASES.each do |name, spec|
     define_method(:"test_#{name}") { check(name, **spec) }
+  end
+
+  def test_directory_without_test_files_reports_zero_files_and_tests
+    out, status = run_cli('empty', %w[check])
+
+    assert_match(/^summary: 0 files \(0 incomplete, 0 skipped\), 0 tests, /, out)
+    assert_equal 0, status
+  end
+
+  # A broken file must never let a run look clean, even when it yields no finding: a file that
+  # is not valid UTF-8 is incomplete but has no parse errors to report.
+  def test_run_with_only_an_incomplete_file_exits_one
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, 'test'))
+      File.binwrite(File.join(dir, 'test/latin1_test.rb'), "# caf\xE9\n".b)
+      out, status = run_cli(dir, %w[check])
+
+      assert_equal "summary: 1 files (1 incomplete, 0 skipped), 0 tests, 0 errors, 0 warnings\n", out.lines.first
+      assert_equal 1, status
+    end
+  end
+
+  def run_cli(cwd, args)
+    out = StringIO.new
+    status = Scully::CLI.start(args, out:, err: StringIO.new, cwd: File.expand_path(cwd, FIXTURES))
+    [out.string, status]
   end
 
   def check(name, cwd:, args:, status:)
