@@ -86,5 +86,29 @@ module Scully
 
       assert_equal 'no such file: nope', error.message
     end
+
+    # Under LANG=C, ARGV, Dir.pwd and directory listings arrive as BINARY or US-ASCII strings.
+    # Paths come back as UTF-8 so they can be joined with source text.
+    def test_locale_encoded_paths_come_back_as_utf8
+      FileUtils.mkdir_p(File.join(@root, 'crème/spec'))
+      File.write(File.join(@root, 'crème/spec/café_spec.rb'), "\n")
+      cwd = File.join(@root, 'crème').b
+
+      [Discovery.call([], cwd:), Discovery.call(['spec'.b], cwd:),
+       Discovery.call(['spec/café_spec.rb'.b.force_encoding(Encoding::US_ASCII)], cwd:)].each do |paths|
+        assert_equal ['spec/café_spec.rb'], paths
+        assert_equal [Encoding::UTF_8], paths.map(&:encoding)
+      end
+    end
+
+    # A file name that is not valid UTF-8 keeps its bytes instead of raising.
+    def test_names_that_are_not_utf8_do_not_raise
+      path = Discovery.relative(Pathname.new("#{@root}/spec/bad\xE9_spec.rb".b), Pathname.new(@root.b))
+
+      assert_equal ["spec/bad\xE9_spec.rb".b, Encoding::UTF_8], [path.b, path.encoding]
+      error = assert_raises(Error) { discover("bad\xE9_spec.rb".b) }
+
+      assert_equal "no such file: bad\xE9_spec.rb".b, error.message.b
+    end
   end
 end

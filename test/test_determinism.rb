@@ -47,6 +47,17 @@ class TestDeterminism < Minitest::Test
 
     assert_equal utf8, report_in_process({ 'LANG' => 'C', 'LC_ALL' => 'C' })
     assert_equal report, utf8
+
+    # Non-ASCII names and source lines are where the locale's encoding would leak in.
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, 'spec'))
+      File.write(File.join(dir, 'spec/crème_spec.rb'), "RSpec.describe Café do\n  it \"sums the crème\" do\n    " \
+                                                       "Café.new.total\n  end\nend\n")
+      utf8 = report_in_process({ 'LANG' => 'en_US.UTF-8', 'LC_ALL' => nil }, cwd: dir)
+
+      assert_includes utf8.first, '--> spec/crème_spec.rb:2:3'
+      assert_equal utf8, report_in_process({ 'LANG' => 'C', 'LC_ALL' => 'C' }, cwd: dir)
+    end
   end
 
   def test_checkout_location_does_not_matter
