@@ -114,9 +114,13 @@ module Scully
       assert_equal 0, report.exit_status
     end
 
+    # A file that is not valid UTF-8 is incomplete but has no parse errors, so nothing else fails the run.
     def test_incomplete_file_alone_exits_one
-      _, report = run_analyzer('test', rules: [])
+      File.binwrite(File.join(@root, 'test/latin1_test.rb'), "# caf\xE9\n".b)
+      _, report = run_analyzer('test/latin1_test.rb')
 
+      assert_empty report.findings
+      assert_equal 1, report.counts[:incomplete]
       assert_equal 1, report.exit_status
     end
 
