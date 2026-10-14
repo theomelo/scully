@@ -45,6 +45,41 @@ module Scully
         end
       end
 
+      def helper(name, resolution) = HelperCall.new(name:, span: SPAN, resolution:)
+
+      def explain(helper_calls) = NoAssertion.new.explain(check(test_case(helper_calls:)).first)
+
+      def test_explain_without_helper_calls_says_none
+        assert_equal ["No assertion, expectation, or assertion helper was found in this test's body.",
+                      'Calls checked as possible helpers: none.'], explain([])
+      end
+
+      def test_explain_lists_helpers_with_how_they_were_resolved
+        assert_equal 'Calls checked as possible helpers: `build_order` (not defined in this file, not followed) ' \
+                     'and `prepare` (defined in this file, no assertions).',
+                     explain([helper(:build_order, :unresolved), helper(:prepare, :same_file_without_assertion)]).last
+      end
+
+      def test_explain_joins_three_helpers_without_an_oxford_comma
+        assert_equal 'Calls checked as possible helpers: `a` (not defined in this file, not followed), ' \
+                     '`b` (not defined in this file, not followed) and `c` (not defined in this file, not followed).',
+                     explain(%i[a b c].map { helper(it, :unresolved) }).last
+      end
+
+      def test_explain_lists_a_repeated_helper_once
+        assert_equal 'Calls checked as possible helpers: `a` (not defined in this file, not followed) ' \
+                     'and `b` (not defined in this file, not followed).',
+                     explain(%i[a b a].map { helper(it, :unresolved) }).last
+      end
+
+      def test_explain_lists_five_helpers_then_counts_the_rest
+        line = explain(%i[a b c d e f g].map { helper(it, :unresolved) }).last
+
+        assert_equal 5, line.scan('not followed').size
+        assert line.end_with?('`e` (not defined in this file, not followed) and 2 more.'), line
+        assert_includes line, 'followed), `b`'
+      end
+
       # Principle II: the framework is display data; the same test gives the same finding.
       def test_identical_tests_in_both_frameworks_give_identical_findings
         assert_equal check(test_case(framework: :rspec)), check(test_case(framework: :minitest))

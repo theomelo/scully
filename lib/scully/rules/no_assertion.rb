@@ -18,12 +18,33 @@ module Scully
                                default_enabled: false)
 
       LABEL = 'this test runs code but never checks a result'
+      # How a candidate helper was resolved, for helpers that did not count as assertions.
+      RESOLUTIONS = { same_file_without_assertion: 'defined in this file, no assertions',
+                      unresolved: 'not defined in this file, not followed' }.freeze
+      LISTED_HELPERS = 5
 
       def check(test_case)
         return [] unless test_case.status == :active && test_case.assertions.empty?
 
         [finding(primary: Label.new(span: test_case.span, text: LABEL), test_name: test_case.name,
                  facts: { helper_calls: test_case.helper_calls.map { [it.name, it.resolution] } })]
+      end
+
+      def explain(finding)
+        ["No assertion, expectation, or assertion helper was found in this test's body.",
+         "Calls checked as possible helpers: #{helpers(finding.facts[:helper_calls])}."]
+      end
+
+      private
+
+      # Each helper once, at its first call: up to LISTED_HELPERS, then a count of the rest.
+      def helpers(calls)
+        calls = calls.uniq(&:first)
+        return 'none' if calls.empty?
+
+        items = calls.first(LISTED_HELPERS).map { |name, resolution| "`#{name}` (#{RESOLUTIONS.fetch(resolution)})" }
+        items << "#{calls.size - LISTED_HELPERS} more" if calls.size > LISTED_HELPERS
+        items.size == 1 ? items.first : "#{items[0...-1].join(", ")} and #{items.last}"
       end
     end
   end

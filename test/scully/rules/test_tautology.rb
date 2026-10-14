@@ -52,6 +52,12 @@ module Scully
         assert_equal({ stub_line: 2, value: '0.2', subject: 'tax.rate', assertion_line: 7 }, finding.facts)
       end
 
+      def test_explain_names_the_stub_the_value_and_the_assertion
+        assert_equal ['`tax.rate` is stubbed to return `0.2` (line 2), and the expectation on line 7 compares ' \
+                      '`tax.rate` with `0.2`. No code under test runs between the stub and the assertion.'],
+                     Tautology.new.explain(check.first)
+      end
+
       def test_stub_in_the_body_is_labelled_here
         finding = check(doubles: [double(origin: :body, line: 5)]).first
 
