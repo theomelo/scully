@@ -49,7 +49,7 @@ class TestGolden < Minitest::Test
 
   SGR = /\e\[[0-9;]*m/
 
-  # FR-019: colour is the only difference between terminal and piped output.
+  # Colour is the only difference between terminal and piped output.
   CASES.each do |name, spec|
     next if spec[:stream] == :err
 
