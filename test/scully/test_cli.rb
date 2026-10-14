@@ -55,7 +55,8 @@ module Scully
       status, out, = run_cli('check', 'lib/broken.rb')
 
       assert_equal 1, status
-      assert_includes out, 'summary: 1 files (1 incomplete, 0 skipped), 0 tests, 0 errors, 0 warnings'
+      assert_includes out, 'summary: 1 files (1 incomplete, 0 skipped), 0 tests, 1 errors, 0 warnings'
+      assert_includes out, "error[parse]: syntax error\n --> lib/broken.rb:1:1\n"
     end
 
     def test_check_is_the_default_command

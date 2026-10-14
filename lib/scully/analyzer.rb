@@ -10,6 +10,9 @@ module Scully
     # SourceFiles read during the last run, by path.
     attr_reader :sources
 
+    # Built-in rule run on every file report.
+    PARSE = Rules::Parse.new
+
     def initialize(rules:, normalizers: NORMALIZERS)
       @rules = rules
       @normalizers = normalizers
@@ -65,7 +68,8 @@ module Scully
     end
 
     def check(file)
-      file.test_cases.select { it.status == :active }.flat_map { |test_case| @rules.flat_map { it.check(test_case) } }
+      PARSE.findings(file) +
+        file.test_cases.select { it.status == :active }.flat_map { |test_case| @rules.flat_map { it.check(test_case) } }
     end
 
     def count(files, findings)

@@ -94,14 +94,15 @@ module Scully
     def test_rules_run_on_active_tests_and_findings_are_sorted
       _, report = run_analyzer
 
-      assert_equal([['spec/a_spec.rb', 2], ['spec/b_spec.rb', 2], ['spec/b_spec.rb', 5], ['test/broken_test.rb', 2]],
+      assert_equal([['test/broken_test.rb', 6], ['test/broken_test.rb', 7], ['spec/a_spec.rb', 2],
+                    ['spec/b_spec.rb', 2], ['spec/b_spec.rb', 5], ['test/broken_test.rb', 2]],
                    report.findings.map { [it.primary.span.path, it.primary.span.start_line] })
     end
 
     def test_counts_and_exit_status
       _, report = run_analyzer('.', 'lib/helper.rb')
 
-      assert_equal({ files: 4, incomplete: 1, skipped: 1, tests: 5, not_analyzed: 1, errors: 0, warnings: 4 },
+      assert_equal({ files: 4, incomplete: 1, skipped: 1, tests: 5, not_analyzed: 1, errors: 2, warnings: 4 },
                    report.counts)
       assert_equal 1, report.exit_status
     end
@@ -116,8 +117,15 @@ module Scully
     def test_incomplete_file_alone_exits_one
       _, report = run_analyzer('test', rules: [])
 
-      assert_empty report.findings
       assert_equal 1, report.exit_status
+    end
+
+    def test_parse_errors_are_reported_without_any_rule
+      _, report = run_analyzer('test', rules: [])
+
+      assert_equal([[:parse, :error, 6], [:parse, :error, 7]],
+                   report.findings.map { [it.rule_id, it.severity, it.primary.span.start_line] })
+      assert_equal [2, 0], report.counts.values_at(:errors, :warnings)
     end
 
     def test_broken_file_without_a_framework_is_incomplete_not_skipped
