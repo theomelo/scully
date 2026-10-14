@@ -16,6 +16,9 @@ module Scully
 
       def check(_test_case) = []
 
+      # Every message Prism gave for the finding's line.
+      def explain(finding) = finding.facts[:messages]
+
       # +file+'s parse errors are already sorted by line, column, then message bytes, so the
       # first error on each line labels the finding and the rest are counted.
       def findings(file)

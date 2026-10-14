@@ -5,13 +5,14 @@ require 'stringio'
 require 'tmpdir'
 require 'fileutils'
 
-# Runs the CLI in-process against fixture directories and compares stdout with the files in
+# Runs the CLI in-process against fixture directories and compares its output with the files in
 # test/golden. Set SCULLY_UPDATE_GOLDEN=1 to rewrite the golden files, then review the diff.
-# contract.txt is never rewritten: it is the published example and the code must match it.
+# contract.txt and the why_*.txt files are never rewritten: they are the published examples and
+# the code must match them.
 class TestGolden < Minitest::Test
   FIXTURES = File.expand_path('fixtures', __dir__)
   GOLDEN = File.expand_path('golden', __dir__)
-  FIXED = %w[contract].freeze
+  FIXED = %w[contract why_tautology why_incomplete why_file_index why_no_finding].freeze
 
   RSPEC_NO_ASSERTION = %w[spec/good_spec.rb spec/no_assertion_spec.rb spec/pending_spec.rb
                           spec/shared_examples_spec.rb spec/teardown_only_spec.rb].freeze
@@ -20,7 +21,8 @@ class TestGolden < Minitest::Test
   RSPEC_TAUTOLOGY = %w[spec/tautology_spec.rb spec/tautology_cases_spec.rb spec/not_tautology_spec.rb].freeze
   MINITEST_TAUTOLOGY = %w[test/tautology_test.rb test/not_tautology_test.rb].freeze
 
-  # name => working directory under test/fixtures, CLI arguments, expected exit status.
+  # name => working directory under test/fixtures, CLI arguments, expected exit status, and the
+  # stream compared with the golden file (stdout unless +stream+ is :err; the other must be empty).
   CASES = {
     'empty' => { cwd: 'empty', args: %w[check], status: 0 },
     'rspec_no_assertion' => { cwd: 'rspec', args: ['check', *RSPEC_NO_ASSERTION], status: 1 },
@@ -34,11 +36,30 @@ class TestGolden < Minitest::Test
     # The test that overlaps the syntax error is counted but not analyzed.
     'minitest_syntax_error' => { cwd: 'minitest', args: %w[check test/syntax_error_test.rb], status: 1 },
     'rspec_syntax_error' => { cwd: 'rspec', args: %w[check spec/syntax_error_spec.rb], status: 1 },
-    'contract' => { cwd: 'contract', args: %w[check], status: 1 }
+    'contract' => { cwd: 'contract', args: %w[check], status: 1 },
+    'why_tautology' => { cwd: 'contract', args: %w[why spec/tautology_spec.rb:7], status: 0 },
+    'why_incomplete' => { cwd: 'contract', args: %w[why test/syntax_error_test.rb:4], status: 0 },
+    'why_file_index' => { cwd: 'contract', args: %w[why test/syntax_error_test.rb], status: 0 },
+    'why_no_finding' => { cwd: 'contract', args: %w[why spec/no_assertion_spec.rb:4], status: 1, stream: :err }
   }.freeze
 
   CASES.each do |name, spec|
     define_method(:"test_#{name}") { check(name, **spec) }
+  end
+
+  SGR = /\e\[[0-9;]*m/
+
+  # Colour is the only difference between terminal and piped output.
+  CASES.each do |name, spec|
+    next if spec[:stream] == :err
+
+    define_method(:"test_#{name}_with_colour_strips_to_the_piped_output") do
+      piped, = run_cli(spec[:cwd], spec[:args])
+      coloured, = run_cli(spec[:cwd], ['--color=always', *spec[:args]])
+
+      assert_equal piped, coloured.gsub(SGR, '')
+      assert_match SGR, coloured if piped.match?(/^(error|warning)\[/)
+    end
   end
 
   # With no findings, only the summary and evidence lines are printed.
@@ -65,19 +86,20 @@ class TestGolden < Minitest::Test
 
   def run_cli(cwd, args)
     out = StringIO.new
-    status = Scully::CLI.start(args, out:, err: StringIO.new, cwd: File.expand_path(cwd, FIXTURES))
+    status = Scully::CLI.start(args, out:, err: StringIO.new, cwd: File.expand_path(cwd, FIXTURES), env: {})
     [out.string, status]
   end
 
-  def check(name, cwd:, args:, status:)
-    out = StringIO.new
-    err = StringIO.new
-    actual = Scully::CLI.start(args, out:, err:, cwd: File.join(FIXTURES, cwd))
+  # The environment is empty so that a developer's FORCE_HYPERLINK cannot change the output.
+  def check(name, cwd:, args:, status:, stream: :out)
+    streams = { out: StringIO.new, err: StringIO.new }
+    actual = Scully::CLI.start(args, **streams, cwd: File.join(FIXTURES, cwd), env: {})
+    compared, other = streams.partition { |key, _| key == stream }.map { it.first.last.string }
     golden = File.join(GOLDEN, "#{name}.txt")
-    File.write(golden, out.string) if ENV['SCULLY_UPDATE_GOLDEN'] == '1' && !FIXED.include?(name)
+    File.write(golden, compared) if ENV['SCULLY_UPDATE_GOLDEN'] == '1' && !FIXED.include?(name)
 
-    assert_equal File.read(golden), out.string
+    assert_equal File.read(golden), compared
     assert_equal status, actual
-    assert_empty err.string
+    assert_empty other
   end
 end

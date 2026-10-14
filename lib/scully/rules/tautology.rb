@@ -24,6 +24,13 @@ module Scully
         test_case.assertions.filter_map { tautology(it, test_case) }
       end
 
+      def explain(finding)
+        facts = finding.facts
+        ["`#{facts[:subject]}` is stubbed to return `#{facts[:value]}` (line #{facts[:stub_line]}), and the " \
+         "expectation on line #{facts[:assertion_line]} compares `#{facts[:subject]}` with `#{facts[:value]}`. " \
+         'No code under test runs between the stub and the assertion.']
+      end
+
       private
 
       def tautology(assertion, test_case)

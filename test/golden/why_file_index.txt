@@ -1,0 +1,11 @@
+test/syntax_error_test.rb (incomplete file: inconclusive)
+
+  error[parse]           9:13  syntax error
+  error[parse]           10:3  syntax error
+  warning[no_assertion]  4:3   test makes no assertion
+
+Use `scully why <location>` for details:
+
+scully why test/syntax_error_test.rb:9    # parse
+scully why test/syntax_error_test.rb:10   # parse
+scully why test/syntax_error_test.rb:4    # no_assertion

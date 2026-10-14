@@ -10,11 +10,27 @@ module Scully
       COMMENT_GAP = '   '
 
       # +messages+ maps rule ids to their header messages; +sources+ maps paths to objects
-      # that respond to line(number).
-      def self.render(report, messages:, sources:) = new(report, messages, sources).render
+      # that respond to line(number); +terminal+ adds colour when it is on.
+      def self.render(report, messages:, sources:, terminal: Terminal::PLAIN)
+        new(report, messages, sources, terminal).render
+      end
 
-      def initialize(report, messages, sources)
+      # One `scully why <path>:<line>   # <rule_id>` line per finding, commands padded to the longest.
+      def self.commands(findings)
+        commands = findings.map do
+          span = it.primary.span
+          ["scully why #{span.path}:#{span.start_line}", it.rule_id]
+        end
+        width = commands.map { it.first.size }.max
+        commands.map { |command, rule_id| "#{command.ljust(width)}#{COMMENT_GAP}# #{rule_id}" }
+      end
+
+      # `skipped: <path>: <reason>` for a skipped FileReport, ending in a newline.
+      def self.skip_line(file) = "skipped: #{file.path}: #{file.skip_reason}\n"
+
+      def initialize(report, messages, sources, terminal)
         @report = report
+        @terminal = terminal
         @messages = messages
         @sources = sources
       end
@@ -40,14 +56,14 @@ module Scully
 
       def block(finding)
         Snippet.render(finding, message: @messages.fetch(finding.rule_id),
-                                source: @sources.fetch(finding.primary.span.path))
+                                source: @sources.fetch(finding.primary.span.path), terminal: @terminal)
       end
 
       def skipped_group
         skipped = @report.files.select { it.status == :skipped }
         return if skipped.empty?
 
-        "skipped (#{skipped.size})\n\n#{skipped.map { "skipped: #{it.path}: #{it.skip_reason}\n" }.join}"
+        "skipped (#{skipped.size})\n\n#{skipped.map { self.class.skip_line(it) }.join}"
       end
 
       def summary
@@ -57,15 +73,7 @@ module Scully
           "#{counts[:tests]} tests#{not_analyzed}, #{counts[:errors]} errors, #{counts[:warnings]} warnings"
       end
 
-      def follow_up
-        commands = @report.findings.map do
-          span = it.primary.span
-          ["scully why #{span.path}:#{span.start_line}", it.rule_id]
-        end
-        width = commands.map { it.first.size }.max
-        lines = commands.map { |command, rule_id| "#{command.ljust(width)}#{COMMENT_GAP}# #{rule_id}\n" }
-        "\n#{FOLLOW_UP}\n\n#{lines.join}"
-      end
+      def follow_up = "\n#{FOLLOW_UP}\n\n#{self.class.commands(@report.findings).map { "#{it}\n" }.join}"
     end
   end
 end

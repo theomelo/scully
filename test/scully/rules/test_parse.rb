@@ -46,6 +46,13 @@ module Scully
         assert_equal [first, *others].map(&:message), finding.facts[:messages]
       end
 
+      def test_explain_lists_every_message_on_the_line
+        messages = ['expected a matching `)`', "unexpected 'end'"]
+        finding = findings(*messages.map { error(9, 13, it) }).first
+
+        assert_equal messages, Parse.new.explain(finding)
+      end
+
       def test_each_distinct_line_gets_its_own_finding
         result = findings(error(9, 13, 'a'), error(10, 3, 'b'), error(10, 7, 'c'), error(12, 1, 'd'))
 

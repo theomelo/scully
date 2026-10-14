@@ -19,13 +19,17 @@ module Scully
       INCONCLUSIVE = ' (incomplete file: inconclusive)'
 
       # +source+ responds to line(number) and returns the line's text without its terminator.
+      # +terminal+ colours the severity word and markers when colour is on.
       # Returns the block as a String ending in a newline.
-      def self.render(finding, message:, source:) = new(finding, source).render(message)
+      def self.render(finding, message:, source:, terminal: Terminal::PLAIN)
+        new(finding, source, terminal).render(message)
+      end
 
-      def initialize(finding, source)
+      def initialize(finding, source, terminal)
         @finding = finding
+        @terminal = terminal
         @source = source
-        @labels = [[finding.primary, PRIMARY], *finding.secondary.map { [it, SECONDARY] }]
+        @labels = [[finding.primary, PRIMARY, finding.severity], *finding.secondary.map { [it, SECONDARY, :secondary] }]
         @numbers = @labels.map { it.first.span.start_line }.uniq.sort
         @gutter = ' ' * @numbers.max.to_s.size
       end
@@ -37,7 +41,7 @@ module Scully
 
       private
 
-      def header(message) = "#{@finding.severity}[#{@finding.rule_id}]: #{message}"
+      def header(message) = "#{@terminal.paint(@finding.severity, @finding.severity)}[#{@finding.rule_id}]: #{message}"
 
       def location
         span = @finding.primary.span
@@ -64,13 +68,13 @@ module Scully
 
       def markers(number)
         @labels.select { it.first.span.start_line == number }
-               .sort_by { |label, _| label.span.start_column }
-               .map { |label, marker| marker_line(label, marker) }
+               .sort_by { |label, *| label.span.start_column }
+               .map { |label, marker, style| marker_line(label, marker, style) }
       end
 
-      def marker_line(label, marker)
+      def marker_line(label, marker, style)
         start, width = columns(label.span)
-        "#{@gutter} | #{" " * start}#{marker * width} #{label.text}"
+        "#{@gutter} | #{" " * start}#{@terminal.paint(marker * width, style)} #{label.text}"
       end
 
       # Display start and marker width. Multi-line spans run to the end of their first line;
