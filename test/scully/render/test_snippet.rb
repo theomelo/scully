@@ -49,8 +49,8 @@ module Scully
         Span.new(path: 'spec/tautology_spec.rb', start_line: line, start_column:, end_line:, end_column:)
       end
 
-      def finding(primary, *secondary, severity: :error, rule_id: :tautology)
-        Finding.new(rule_id:, severity:, primary:, secondary:, test_name: nil, facts: {}, evidence: :static)
+      def finding(primary, *secondary, severity: :error, rule_id: :tautology, evidence: :static)
+        Finding.new(rule_id:, severity:, primary:, secondary:, test_name: nil, facts: {}, evidence:)
       end
 
       def source(text) = SourceFile.new('spec/tautology_spec.rb', source: text)
@@ -95,6 +95,16 @@ module Scully
 
         assert_includes result, "1 |   it 'x' do\n  |   ^^^^^^^^^ test\n"
         refute_includes result, '2 |'
+      end
+
+      def test_inconclusive_finding_labels_its_location
+        result = render(finding(Label.new(span: span(7, 5, 32), text: 'p'), evidence: :inconclusive))
+
+        assert_includes result, "\n --> spec/tautology_spec.rb:7:5 (incomplete file: inconclusive)\n  |\n"
+      end
+
+      def test_static_finding_has_no_evidence_label
+        refute_includes render(finding(Label.new(span: span(7, 5, 32), text: 'p'))), 'inconclusive'
       end
 
       def test_trailing_whitespace_is_removed

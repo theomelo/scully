@@ -44,7 +44,7 @@ module Scully
     def check(paths)
       analyzer = Analyzer.new(rules: @rules)
       run = analyzer.run(paths, cwd: @cwd)
-      messages = @rules.to_h { [it.class.id, it.class.message] }
+      messages = [Rules::Parse, *@rules.map(&:class)].to_h { [it.id, it.message] }
       @out.print Render::Report.render(run, messages:, sources: analyzer.sources)
       run.exit_status
     end

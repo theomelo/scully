@@ -13,12 +13,16 @@ module Scully
 
     module_function
 
-    # Returns paths relative to +cwd+, deduplicated and sorted by bytes.
+    # Returns UTF-8 paths relative to +cwd+, deduplicated and sorted by bytes.
     # Raises Scully::Error naming the first PATH that does not exist.
+    #
+    # PATHs and +cwd+ come in the locale's encoding (BINARY or US-ASCII under LANG=C), so they
+    # are handled as bytes, which never raise on names that are not valid UTF-8, and tagged
+    # UTF-8 on the way out so they join with source text.
     def call(paths, cwd: Dir.pwd)
       paths = ['.'] if paths.empty?
-      root = Pathname.new(File.expand_path(cwd))
-      paths.flat_map { expand(it, root) }.uniq.sort
+      root = Pathname.new(File.expand_path(cwd.b))
+      paths.flat_map { expand(it.b, root) }.uniq.sort
     end
 
     def expand(path, root)
@@ -44,6 +48,6 @@ module Scully
 
     def skip?(name) = SKIPPED_DIRECTORIES.include?(name) || name.start_with?('.')
 
-    def relative(path, root) = path.relative_path_from(root).to_s
+    def relative(path, root) = path.relative_path_from(root).to_s.force_encoding(Encoding::UTF_8)
   end
 end
