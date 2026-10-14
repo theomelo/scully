@@ -67,9 +67,13 @@ module Scully
         (start <=> [outer.end_line, outer.end_column]).negative?
     end
 
+    # Parse findings are certain; what the rules found in an incomplete file may not be.
     def check(file)
-      PARSE.findings(file) +
-        file.test_cases.select { it.status == :active }.flat_map { |test_case| @rules.flat_map { it.check(test_case) } }
+      findings = file.test_cases.select { it.status == :active }.flat_map do |test_case|
+        @rules.flat_map { it.check(test_case) }
+      end
+      findings = findings.map { it.with(evidence: :inconclusive) } if file.status == :incomplete
+      PARSE.findings(file) + findings
     end
 
     def count(files, findings)

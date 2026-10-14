@@ -16,6 +16,7 @@ module Scully
       TAB = '    '
       PRIMARY = '^'
       SECONDARY = '-'
+      INCONCLUSIVE = ' (incomplete file: inconclusive)'
 
       # +source+ responds to line(number) and returns the line's text without its terminator.
       # Returns the block as a String ending in a newline.
@@ -40,7 +41,8 @@ module Scully
 
       def location
         span = @finding.primary.span
-        "#{@gutter}--> #{span.path}:#{span.start_line}:#{span.start_column}"
+        suffix = INCONCLUSIVE if @finding.evidence == :inconclusive
+        "#{@gutter}--> #{span.path}:#{span.start_line}:#{span.start_column}#{suffix}"
       end
 
       def body

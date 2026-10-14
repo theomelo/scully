@@ -120,6 +120,16 @@ module Scully
       assert_equal 1, report.exit_status
     end
 
+    # A syntax error is certain; only what the rules saw in a broken file is in doubt.
+    def test_findings_from_incomplete_files_are_inconclusive
+      _, report = run_analyzer
+
+      assert_equal([['spec/a_spec.rb', :every_test, :static], ['spec/b_spec.rb', :every_test, :static],
+                    ['spec/b_spec.rb', :every_test, :static], ['test/broken_test.rb', :every_test, :inconclusive],
+                    ['test/broken_test.rb', :parse, :static], ['test/broken_test.rb', :parse, :static]],
+                   report.findings.map { [it.primary.span.path, it.rule_id, it.evidence] }.sort)
+    end
+
     def test_parse_errors_are_reported_without_any_rule
       _, report = run_analyzer('test', rules: [])
 
