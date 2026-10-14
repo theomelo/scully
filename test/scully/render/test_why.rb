@@ -136,6 +136,21 @@ module Scully
         assert_equal location('spec/tautology_spec.rb', 7), blocks.last
       end
 
+      # Column decides before rule id: tautology sorts after no_assertion by id, but starts first.
+      def test_findings_on_one_line_are_ordered_by_column_before_rule_id
+        run = Analyzer.new(rules: RULES.values.drop(1)).run(['spec/tautology_spec.rb'], cwd: CONTRACT)
+        tautology = run.findings.first
+        primary = tautology.primary
+        later = primary.with(span: primary.span.with(start_column: primary.span.start_column + 4))
+        other = tautology.with(rule_id: :no_assertion, severity: :warning, primary: later, facts: { helper_calls: [] })
+        why = Why.new(run.files.first, findings: [other, tautology], rules: RULES,
+                                       source: SourceFile.read('spec/tautology_spec.rb', base: CONTRACT))
+
+        headers = why.location(7).scan(/^(?:error|warning)\[\w+\]/)
+
+        assert_equal ['error[tautology]', 'warning[no_assertion]'], headers
+      end
+
       def test_location_without_a_finding_is_nil
         assert_nil location('spec/tautology_spec.rb', 3)
       end
