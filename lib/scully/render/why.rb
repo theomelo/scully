@@ -56,6 +56,9 @@ module Scully
         "#{@file.path}#{status}\n\n#{table(rows).join}\n#{DETAILS}\n\n#{commands.join}"
       end
 
+      # The report's skip line when the file was skipped, so it never looks clean; nil otherwise.
+      def skipped = (Report.skip_line(@file) if @file.status == :skipped)
+
       # The message for a +line+ without findings, pointing at the file's findings instead.
       def missing(line)
         others = @findings.empty? ? "No findings in this file.\n" : "#{OTHERS}\n#{commands("  ").join}"

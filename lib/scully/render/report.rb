@@ -25,6 +25,9 @@ module Scully
         commands.map { |command, rule_id| "#{command.ljust(width)}#{COMMENT_GAP}# #{rule_id}" }
       end
 
+      # `skipped: <path>: <reason>` for a skipped FileReport, ending in a newline.
+      def self.skip_line(file) = "skipped: #{file.path}: #{file.skip_reason}\n"
+
       def initialize(report, messages, sources, terminal)
         @report = report
         @terminal = terminal
@@ -60,7 +63,7 @@ module Scully
         skipped = @report.files.select { it.status == :skipped }
         return if skipped.empty?
 
-        "skipped (#{skipped.size})\n\n#{skipped.map { "skipped: #{it.path}: #{it.skip_reason}\n" }.join}"
+        "skipped (#{skipped.size})\n\n#{skipped.map { self.class.skip_line(it) }.join}"
       end
 
       def summary

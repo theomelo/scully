@@ -63,10 +63,11 @@ module Scully
     end
 
     # Re-analyzes one file; prints the findings on LINE, or the file's index without a line.
+    # A skipped file prints its skip line either way.
     def why(arguments)
       path, line = why_target(arguments)
       view = why_view(path)
-      text = line ? view.location(line) : view.index
+      text = view.skipped || (line ? view.location(line) : view.index)
       text ? @out.print(text) : @err.print(view.missing(line))
       text ? 0 : 1
     end

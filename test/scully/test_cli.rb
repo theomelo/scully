@@ -173,6 +173,15 @@ module Scully
                    run_cli('why', 'latin1_test.rb')
     end
 
+    # A skipped file was never analyzed, so it must not look clean.
+    def test_why_on_a_skipped_file_prints_the_skip_line
+      write('lib/foo.rb', "class Foo\nend\n")
+      skip_line = "skipped: lib/foo.rb: no RSpec or Minitest test structure found\n"
+
+      assert_equal [0, skip_line, ''], run_cli('why', 'lib/foo.rb')
+      assert_equal [0, skip_line, ''], run_cli('why', 'lib/foo.rb:1')
+    end
+
     def test_why_at_a_line_without_a_finding_lists_the_file_findings_and_exits_one
       write('spec/order_spec.rb', NO_ASSERTION)
 
