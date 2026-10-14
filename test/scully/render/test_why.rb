@@ -21,12 +21,22 @@ module Scully
         assert_equal ['note: aaa', '  bbb ccc'], Why.wrap('aaa bbb ccc', first: 'note: ', indent: '  ', width: 10)
       end
 
-      def test_wrap_defaults_to_92_columns
+      # Lines stay shorter than 92 columns: at most 91, indent included.
+      def test_wrap_defaults_to_91_columns
         words = Array.new(40, 'word').join(' ')
         lines = Why.wrap(words, indent: '  ')
 
-        assert_operator lines.map(&:size).max, :<=, 92
-        assert_operator lines.first.size + ' word'.size, :>, 92
+        assert_operator lines.map(&:size).max, :<=, 91
+        assert_operator lines.first.size + ' word'.size, :>, 91
+      end
+
+      def test_wrap_matches_the_published_evidence_line
+        text = 'inconclusive. This file has parse errors on lines 9 and 10, so parts of it may not have been ' \
+               'analyzed. Fix them and run again.'
+
+        assert_equal ['evidence: inconclusive. This file has parse errors on lines 9 and 10, so parts of it may',
+                      '  not have been analyzed. Fix them and run again.'],
+                     Why.wrap(text, first: 'evidence: ', indent: '  ')
       end
     end
   end

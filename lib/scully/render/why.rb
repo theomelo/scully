@@ -4,7 +4,8 @@ module Scully
   module Render
     # Renders `scully why`: the finding block followed by its explanation.
     class Why
-      WIDTH = 92
+      # Longest line, indent included: wrapped text stays shorter than 92 columns.
+      WIDTH = 91
 
       # Wraps +text+ greedily on spaces so no line exceeds +width+ characters, prefix included.
       # The first line starts with +first+, the others with +indent+. A word longer than the
