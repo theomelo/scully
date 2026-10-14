@@ -51,7 +51,8 @@ module Scully
         ['auto', {}, true, true],
         ['auto', {}, false, false],
         ['auto', { 'NO_COLOR' => '1' }, true, false],
-        ['auto', { 'NO_COLOR' => '' }, true, false],
+        # no-color.org: an empty NO_COLOR counts as unset.
+        ['auto', { 'NO_COLOR' => '' }, true, true],
         # Colour and hyperlinks are decided independently.
         ['auto', { 'CI' => 'true', 'FORCE_HYPERLINK' => '0' }, true, true]
       ].freeze

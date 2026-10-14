@@ -5,7 +5,7 @@ module Scully
     # Decides whether output may use colour and OSC 8 hyperlinks, and applies them.
     #
     # Neither can be queried from the terminal, so both are guessed from the environment.
-    # Colour is on for a TTY unless NO_COLOR is set. Hyperlinks follow a reduced port of the
+    # Colour is on for a TTY unless NO_COLOR is set to a non-empty value. Hyperlinks follow a reduced port of the
     # decision order of the npm package supports-hyperlinks: an allowlist of terminals known to
     # render them, so older terminals never print escape junk. Colour and hyperlinks are decided
     # independently, and `--color` / `--hyperlinks` (always, never) override each guess.
@@ -23,7 +23,7 @@ module Scully
       def initialize(env:, tty:, color: 'auto', hyperlinks: 'auto')
         @env = env
         @tty = tty
-        @color = decide(color) { tty && !env.key?('NO_COLOR') }
+        @color = decide(color) { tty && env['NO_COLOR'].to_s.empty? }
         @hyperlinks = decide(hyperlinks) { detect_hyperlinks }
       end
 
