@@ -17,7 +17,6 @@ Gem::Specification.new do |s|
 
   s.metadata['allowed_push_host'] = 'https://rubygems.org'
   s.metadata['homepage_uri'] = s.homepage
-  s.metadata['source_code_uri'] = 'https://github.com/theomelo/scully'
   s.metadata['changelog_uri'] = 'https://github.com/theomelo/scully/blob/main/CHANGELOG.md'
   s.metadata['rubygems_mfa_required'] = 'true'
 
