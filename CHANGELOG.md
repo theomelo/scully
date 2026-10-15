@@ -39,3 +39,7 @@ trusted as evidence of behaviour. It reads tests with Prism and never runs them.
 ## [0.0.1] - 2026-10-12
 
 - Initial release
+
+[Unreleased]: https://github.com/theomelo/scully/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/theomelo/scully/compare/v0.0.1...v0.1.0
+[0.0.1]: https://github.com/theomelo/scully/releases/tag/v0.0.1
