@@ -8,14 +8,15 @@ Gem::Specification.new do |s|
   s.authors = ['Theo Melo']
   s.email = ['9499829+theomelo@users.noreply.github.com']
 
-  s.summary = 'Tests trustworthiness checking tool'
+  s.summary = 'Finds Ruby tests that cannot be trusted as evidence'
+  s.description = 'Scully statically checks RSpec and Minitest suites with Prism, without running ' \
+                  'them, and reports tests that check nothing or can never fail.'
   s.homepage = 'https://github.com/theomelo/scully'
   s.license = 'MIT'
   s.required_ruby_version = '>= 4.0.6'
 
   s.metadata['allowed_push_host'] = 'https://rubygems.org'
   s.metadata['homepage_uri'] = s.homepage
-  s.metadata['source_code_uri'] = 'https://github.com/theomelo/scully'
   s.metadata['changelog_uri'] = 'https://github.com/theomelo/scully/blob/main/CHANGELOG.md'
   s.metadata['rubygems_mfa_required'] = 'true'
 

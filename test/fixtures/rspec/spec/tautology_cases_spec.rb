@@ -33,4 +33,8 @@ RSpec.describe Checkout do
   subject { gateway.currency }
 
   it { is_expected.to eq("EUR") }
+
+  it "uses a Minitest assertion" do
+    assert_equal "Corner", shop.name
+  end
 end

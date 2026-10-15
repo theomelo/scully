@@ -1,4 +1,4 @@
-errors (8)
+errors (9)
 
 error[tautology]: assertion checks a value the test stubbed
   --> spec/tautology_cases_spec.rb:10:5
@@ -52,6 +52,15 @@ error[tautology]: assertion checks a value the test stubbed
    |        ^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
 
 error[tautology]: assertion checks a value the test stubbed
+  --> spec/tautology_cases_spec.rb:38:5
+   |
+ 4 |   let(:shop) { instance_double(Shop, name: "Corner", open?: true) }
+   |                -------------------------------------------------- stubbed in setup to return `"Corner"`
+...
+38 |     assert_equal "Corner", shop.name
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
+
+error[tautology]: assertion checks a value the test stubbed
  --> spec/tautology_spec.rb:7:5
   |
 2 |   let(:tax) { double(rate: 0.2) }
@@ -69,7 +78,7 @@ error[tautology]: assertion checks a value the test stubbed
 11 |     expect(gateway.fee).to eq(3)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compares the stub with its own return value
 
-summary: 3 files (0 incomplete, 0 skipped), 15 tests, 8 errors, 0 warnings
+summary: 3 files (0 incomplete, 0 skipped), 16 tests, 9 errors, 0 warnings
 evidence: static analysis only; coverage and mutation testing not run
 
 Use `scully why <location>` for more info about each finding:
@@ -80,5 +89,6 @@ scully why spec/tautology_cases_spec.rb:19   # tautology
 scully why spec/tautology_cases_spec.rb:24   # tautology
 scully why spec/tautology_cases_spec.rb:29   # tautology
 scully why spec/tautology_cases_spec.rb:35   # tautology
+scully why spec/tautology_cases_spec.rb:38   # tautology
 scully why spec/tautology_spec.rb:7          # tautology
 scully why spec/tautology_spec.rb:11         # tautology

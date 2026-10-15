@@ -38,4 +38,17 @@ RSpec.describe Order do
   it "checks through an expect_ helper" do
     expect_shipped(order)
   end
+
+  it "uses a Minitest assertion" do
+    assert page.has_content?("Shipped")
+  end
+
+  it "uses a Minitest refutation" do
+    refute page.has_content?("Cancelled")
+  end
+
+  it "uses Capybara assertions" do
+    page.assert_selector("#order")
+    page.assert_no_selector("#missing")
+  end
 end

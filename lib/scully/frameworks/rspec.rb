@@ -296,6 +296,9 @@ module Scully
         COMPARISONS = { eq: :equality, eql: :equality, equal: :identity }.freeze
         RAISE_CHECKS = %i[raise_error raise_exception].freeze
         MESSAGE_EXPECTATIONS = %i[receive receive_messages receive_message_chain have_received].freeze
+        # Minitest assertions that rspec-rails mixes into examples, and Capybara's
+        # `page.assert_selector`-style matchers, with or without a receiver.
+        MINITEST = /\A(assert|refute)(_|\z)/
 
         # Receiverless calls that are RSpec or Ruby vocabulary, never assertion helpers.
         VOCABULARY = Set[
@@ -316,7 +319,16 @@ module Scully
           elsif SHOULD.include?(call.name) then should(call)
           elsif should_operator?(call)
             { kind: :comparison, comparison: :equality, subject: call.receiver.receiver, expected: argument(call) }
+          elsif MINITEST.match?(call.name) then minitest(call)
           end
+        end
+
+        # Receiverless `assert_equal expected, actual` reads as in Minitest; receiver forms
+        # (`page.assert_selector`) are matchers that check nothing comparable.
+        def minitest(call)
+          return { kind: :other, comparison: nil, subject: nil, expected: nil } if call.receiver
+
+          Frameworks::Minitest::Assertions.assertion(call)
         end
 
         # `x.should eq(1)`; a bare `should` stands in for the subject until the normalizer resolves it.
