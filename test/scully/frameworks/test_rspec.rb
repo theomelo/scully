@@ -160,9 +160,25 @@ module Scully
           end
         RUBY
 
-        assert_equal([[:other], [:other], %i[other other other other], []],
+        assert_equal([[:other], [:other], %i[other other comparison other], []],
                      tests.map { it.assertions.map(&:kind) })
         assert_empty tests[2].helper_calls
+      end
+
+      def test_minitest_assertions_keep_comparison_subject_and_expected
+        assertions = normalize(<<~RUBY).first.assertions
+          RSpec.describe Order do
+            it "compares" do
+              assert_equal 0.2, tax.rate
+              assert_raises(Invalid) { order.save! }
+              page.assert_selector("#order")
+            end
+          end
+        RUBY
+
+        assert_equal([%i[comparison equality], [:raise_check, nil], [:other, nil]],
+                     assertions.map { [it.kind, it.comparison] })
+        assert_equal ['tax.rate', '0.2'], [assertions.first.subject.slice, assertions.first.expected.slice]
       end
 
       def test_comparison_keeps_subject_and_expected_expressions

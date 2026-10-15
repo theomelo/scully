@@ -319,8 +319,16 @@ module Scully
           elsif SHOULD.include?(call.name) then should(call)
           elsif should_operator?(call)
             { kind: :comparison, comparison: :equality, subject: call.receiver.receiver, expected: argument(call) }
-          elsif MINITEST.match?(call.name) then { kind: :other, comparison: nil, subject: nil, expected: nil }
+          elsif MINITEST.match?(call.name) then minitest(call)
           end
+        end
+
+        # Receiverless `assert_equal expected, actual` reads as in Minitest; receiver forms
+        # (`page.assert_selector`) are matchers that check nothing comparable.
+        def minitest(call)
+          return { kind: :other, comparison: nil, subject: nil, expected: nil } if call.receiver
+
+          Frameworks::Minitest::Assertions.assertion(call)
         end
 
         # `x.should eq(1)`; a bare `should` stands in for the subject until the normalizer resolves it.
