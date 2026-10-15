@@ -46,7 +46,8 @@ scully check spec/models/order_spec.rb
   `why`, name the command first: `scully check why`.
 - Directories are searched recursively for `*_spec.rb` and `*_test.rb` files, skipping
   `vendor`, `node_modules`, `tmp`, `.git` and any other directory whose name starts with `.`.
-  A file passed explicitly is checked whatever its name.
+  The skip list applies only below the directory you pass, so `scully check tmp` still
+  searches `tmp`. A file passed explicitly is checked whatever its name.
 - Each file is classified as RSpec or Minitest by its content (`RSpec.describe`,
   `require "spec_helper"`, a class inheriting from `Minitest::Test` or
   `ActiveSupport::TestCase`, `require "test_helper"`, ...), then by whether it sits under
